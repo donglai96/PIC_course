@@ -1,0 +1,17 @@
+-Fixed energy plot in gui_mbeps1.py.  Need to apply the same fix to the other codes.
+Energy still broken on debug script
+Fix stop record button to be more intuitive
+
+Figure oput why energy plot is slow
+Resize feature is broken after running movie
+Put help things on buttons
+Pause when click slope measure
+- Done - change measure slope buttons to images
+? slope bug
+Block run continuously
+-Done - Fix off screen problems
+-Done - Plots end at 513
+Clean up run system.  Havbe events called when running is started, and running is stopped
+? Fix broken graph 11
+FF and Run chunks is off by 1 time step
+Check that objects are duplicated if sent to multiple windows at the same time
