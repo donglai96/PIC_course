@@ -63,8 +63,9 @@
 ! find and count particles leaving tiles and determine destination
 ! update ppart, ihole, ncl
 ! loop over tiles
-!$OMP PARALLEL DO
-!$OMP& PRIVATE(j,k,noff,npp,nn,ih,nh,ist,dx,edgelx,edgerx)
+!$OMP PARALLEL DO                                                       &
+!$OMP& PRIVATE(j,k,noff,npp,nn,ih,nh,ist,dx,edgelx,edgerx)              &
+!$OMP& SCHEDULE(dynamic)
       do 30 k = 1, mx1
       noff = mx*(k - 1)
       npp = kpic(k)
@@ -126,8 +127,7 @@
 !
 ! buffer particles that are leaving tile: update ppbuff, ncl
 ! loop over tiles
-!$OMP PARALLEL DO
-!$OMP& PRIVATE(i,j,k,isum,ist,nh,ip,j1,ii)
+!$OMP PARALLEL DO PRIVATE(i,j,k,isum,ist,nh,ip,j1,ii)
       do 80 k = 1, mx1
 ! find address offset for ordered ppbuff array
       isum = 0
@@ -169,8 +169,8 @@
 !
 ! copy incoming particles from buffer into ppart: update ppart, kpic
 ! loop over tiles
-!$OMP PARALLEL DO
-!$OMP& PRIVATE(i,j,k,ii,noff,npp,nn,kxl,kxr,ih,nh,ncoff,ist,j1,j2,ip,dx,
+!$OMP PARALLEL DO                                                       &
+!$OMP& PRIVATE(i,j,k,ii,noff,npp,nn,kxl,kxr,ih,nh,ncoff,ist,j1,j2,ip,dx,&
 !$OMP& dxt,edgelx,edgerx,ks)
       do 130 k = 1, mx1
       noff = mx*(k - 1)
@@ -257,8 +257,7 @@
          irc2(2) = -irc2(2)
       endif
 ! fill up remaining holes in particle array with particles from bottom
-!$OMP PARALLEL DO
-!$OMP& PRIVATE(i,j,k,npp,ih,nh,j1,j2,ip)
+!$OMP PARALLEL DO PRIVATE(i,j,k,npp,ih,nh,j1,j2,ip)
       do 170 k = 1, mx1
       ih = ihole(2,1,k)
       if (ih.lt.0) then
@@ -334,8 +333,7 @@
       anx = real(nx)
 ! buffer particles that are leaving tile: update ppbuff, ncl
 ! loop over tiles
-!$OMP PARALLEL DO
-!$OMP& PRIVATE(i,j,k,isum,ist,nh,ip,j1,ii)
+!$OMP PARALLEL DO PRIVATE(i,j,k,isum,ist,nh,ip,j1,ii)
       do 40 k = 1, mx1
 ! find address offset for ordered ppbuff array
       isum = 0
@@ -377,8 +375,8 @@
 !
 ! copy incoming particles from buffer into ppart: update ppart, kpic
 ! loop over tiles
-!$OMP PARALLEL DO
-!$OMP& PRIVATE(i,j,k,ii,noff,npp,nn,kxl,kxr,ih,nh,ncoff,ist,j1,j2,ip,dx,
+!$OMP PARALLEL DO                                                       &
+!$OMP& PRIVATE(i,j,k,ii,noff,npp,nn,kxl,kxr,ih,nh,ncoff,ist,j1,j2,ip,dx,&
 !$OMP& dxt,edgelx,edgerx,ks)
       do 90 k = 1, mx1
       noff = mx*(k - 1)
@@ -465,8 +463,7 @@
          irc2(2) = -irc2(2)
       endif
 ! fill up remaining holes in particle array with particles from bottom
-!$OMP PARALLEL DO
-!$OMP& PRIVATE(i,j,k,npp,ih,nh,j1,j2,ip)
+!$OMP PARALLEL DO PRIVATE(i,j,k,npp,ih,nh,j1,j2,ip)
       do 130 k = 1, mx1
       ih = ihole(2,1,k)
       if (ih.lt.0) then
@@ -546,8 +543,7 @@
 ! restores particles that are leaving tile: update ppart, ncl
 ! loop over tiles
       integer i, j, k, nh, j1, ist, ii
-!$OMP PARALLEL DO
-!$OMP& PRIVATE(i,j,k,nh,j1,ist,ii)
+!$OMP PARALLEL DO PRIVATE(i,j,k,nh,j1,ist,ii)
       do 30 k = 1, mx1
 ! find restore address offset for ordered ppbuff array
       ncl(2,k) = ncl(1,k)

@@ -13,8 +13,12 @@
 !          field
 !          calls IBPOIS13
 ! mmaxwel1 solves 1-2/2d maxwell's equation for unsmoothed transverse
-!          electric and magnetic fields
+!          electric and magnetic fields using verlet algorithm
 !          calls MAXWEL1
+! mamaxwel1 solves 1-2/2d maxwell's equation for unsmoothed transverse
+!           electric and magnetic fields using analytic algorithm due to
+!           irving haber
+!           calls AMAXWEL1
 ! memfield1 adds and smooths complex vector fields in fourier space
 !           calls EMFIELD1
 ! mbmfield1 copies and smooths complex vector fields in fourier space
@@ -24,8 +28,8 @@
 ! meaddext1 add external traveling wave field to electric field for
 !           1d code
 !           calls EADDEXT1
-! meaddext13 add external traveling wave field to electric field for
-!            1-2/2d code
+! meaddext13 add external traveling and external circularly polarized
+!            wave fields to electric field for 1-2/2d code
 !            calls EADDEXT13
 ! mbaddext1 adds constant to magnetic field for 1-2/2d code
 !           calls BADDEXT1
@@ -88,7 +92,7 @@
 !            calls WRVMODES1
 ! written by viktor k. decyk, ucla
 ! copyright 2016, regents of the university of california
-! update: october 20, 2016
+! update: january 13, 2018
 !
       use libmfield1_h
       implicit none
@@ -184,7 +188,7 @@
 !-----------------------------------------------------------------------
       subroutine mmaxwel1(eyz,byz,cu,ffc,ci,dt,wf,wm,tfield,nx)
 ! solves 1-2/2d maxwell's equation for unsmoothed transverse electric
-! and magnetic fields
+! and magnetic fields using verlet algorithm
       implicit none
       integer, intent(in) :: nx
       real, intent(in) :: ci, dt
@@ -203,6 +207,33 @@
       call dtimer(dtime,itime,-1)
 ! call low level procedure
       call MAXWEL1(eyz,byz,cu,ffc,ci,dt,wf,wm,nx,nxvh,nxhd)
+! record time
+      call dtimer(dtime,itime,1)
+      tfield = tfield + real(dtime)
+      end subroutine
+!
+!-----------------------------------------------------------------------
+      subroutine mamaxwel1(eyz,byz,cu,ffc,ci,dt,wf,wm,tfield,nx)
+! solves 1-2/2d maxwell's equation for unsmoothed transverse electric
+! and magnetic fields using analytic algorithm due to irving haber
+      implicit none
+      integer, intent(in) :: nx
+      real, intent(in) :: ci, dt
+      real, intent(inout) :: wf, wm, tfield
+      complex, dimension(:,:), intent(inout) :: eyz, byz
+      real, dimension(:,:), intent(in)  :: cu
+      complex, dimension(:), intent(in) :: ffc
+! local data
+      integer :: nxvh, nxhd
+      integer, dimension(4) :: itime
+      double precision :: dtime
+! extract dimensions
+      nxvh = size(cu,2)/2
+      nxhd = size(ffc,1)
+! initialize timer
+      call dtimer(dtime,itime,-1)
+! call low level procedure
+      call AMAXWEL1(eyz,byz,cu,ffc,ci,dt,wf,wm,nx,nxvh,nxhd)
 ! record time
       call dtimer(dtime,itime,1)
       tfield = tfield + real(dtime)
@@ -308,12 +339,14 @@
 !
 !-----------------------------------------------------------------------
       subroutine meaddext13(fxyze,tfield,amodex,freq,time,trmp,toff,el0,&
-     &er0,nx)
-! add external traveling wave field to electric field for 1-2/2d code
+     &er0,ey0,ez0,nx)
+! add external traveling and external circularly polarized wave fields
+! to electric field for 1-2/2d code
       implicit none
       integer, intent(in) :: nx
       real, intent(inout) :: tfield
       real, intent(in) :: amodex, freq, time, trmp, toff, el0, er0
+      real, intent(in) :: ey0, ez0
       real, dimension(:,:), intent(inout) :: fxyze
 ! local data
       integer :: ndim, nxe
@@ -326,7 +359,8 @@
 ! call low level procedure
       select case(ndim)
       case (3)
-         call EADDEXT13(fxyze,amodex,freq,time,trmp,toff,el0,er0,nx,nxe)
+         call EADDEXT13(fxyze,amodex,freq,time,trmp,toff,el0,er0,ey0,ez0&
+     &,nx,nxe)
       case default
          write (*,*) 'meaddext13 error: ndim=', ndim
       end select

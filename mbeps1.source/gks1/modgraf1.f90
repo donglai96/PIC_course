@@ -23,18 +23,30 @@
 !           calls DISPR
 ! displayfv1 displays velocity distribution functions.
 !            calls DISPR
+! displayfe1 displays energy distribution functions
+!            calls DISPR
+! displayfvb1 displays velocity distribution functions in cylindrical
+!             co-ordinates
+!             calls DISPR
 ! displayfvt1 displays time history of vdrift, vth, and entropy 
+!             calls DISPR
 ! displaytr1 displays time history of trajectories
+!            calls DISPR
 ! displayw1 displays time history of electric field,
 !           kinetic and total energies.
 !           calls DISPR
 ! dgrasp1 displays particle in phase space.
 !         calls GRASP13
+! dbgrasp1 displays phase space for magnetized plasma
+!          calls BGRASP13
 ! dpmgrasp1 displays phase space with marked or unmarked particles
 !           calls PMGRASP1 or PGRASP13
+! dpmbgrasp1 displays phase space with marked or unmarked particles
+!            for magnetized plasma
+!            calls PMGRASP13, PGRASP13, PMBGRASP13, or PBGRASP13
 ! written by viktor k. decyk, ucla
 ! copyright 2000, regents of the university of california
-! update: october 24, 2016
+! update: december 20, 2020
 !
       use libgraf1_h
       implicit none
@@ -285,7 +297,7 @@
 ! if ist = 2, then ymin = fmin, ymax = fmin + 2**ir,
 ! where fmin/fmax are the function minimum/maximum, 
 ! and ir = power of 2 scale for (fmax - fmin)
-! idm = (1,2,3) = display (components,sum(abs),both)
+! idm = (1,2,3) = display (components,average,both)
 ! nx = system length in x direction
 ! chrs = array of short labels for each field
 ! irc = return code (0 = normal return)
@@ -297,19 +309,21 @@
       character(len=10), dimension(:), intent(in) :: chrs
 ! local data
       real, dimension(size(f,2),size(f,3)) :: g
-      integer :: i, j, k, num, nxv, nnxv, lx
-      real :: xmin, xmax
+      integer :: i, j, k, nv, num, nxv, nnxv, lx
+      real :: anv, xmin, xmax
       character(len=12) :: lbl
       character(len=2) :: c
    91 format(' T = ',i7)
       if (npl==0) return
       write (lbl,91) itime
+      nv = size(f,1)
       nxv = size(f,2); num = size(f,3)
       nnxv = num*nxv
+      anv = 1.0/real(nv)
       xmin = 0.0
 ! display components
       if (idm /= 2) then
-         do i = 1, size(f,1)
+         do i = 1, nv
             g = f(i,:,:)
          if (i==1) then
             c = ':Y'
@@ -337,9 +351,10 @@
             do j = 1, lx
 ! display sum of absolutes
                g(j,k) = f(1,j,k)
-               do i = 2, size(f,1)
+               do i = 2, nv
                   g(j,k) = g(j,k) + f(i,j,k)
                enddo
+               g(j,k) = g(j,k)*anv
             enddo
          enddo
          lx = min(nx+1,nxv); xmax = real(lx - 1)
@@ -374,7 +389,7 @@
 ! mks = 0 = cycle through line styles
 ! local data
       integer :: isc = 999, ist = 1, mks = 0
-      integer :: i, nmvf, nmv2, idimv
+      integer :: i, nmvf, nmv21, idimv
       real :: vmax, vmin
       character(len=12) :: c
       character(len=2) :: cs
@@ -391,7 +406,7 @@
       idimv = size(fv,2)
       if ((idimv /= 1) .and. (idimv /= 3)) return
       nmvf = size(fv,1)
-      nmv2 = 2*nmv + 1
+      nmv21 = 2*nmv + 1
       write (c,91) itime
 ! each velocity distributions on its own plot
       if (idt /= 2) then
@@ -399,9 +414,9 @@
          cs = trim(adjustl(chrs(i)))
          lbl = trim(label)//' VELOCITY DISTR VS '//cs//c
          write (chr,92) fvm(i,1), fvm(i,2)
-         vmax = fv(1,i)
+         vmax = fv(nmv21+1,i)
          vmin = -vmax
-         call DISPR(fv(2,i),lbl,vmin,vmax,isc,ist,mks,nmv2,nmvf,1,chr,  &
+         call DISPR(fv(1,i),lbl,vmin,vmax,isc,ist,mks,nmv21,nmvf,1,chr, &
      &chrs(i),irc)
          if (irc > 127) then
             npl = irc - 128
@@ -417,14 +432,134 @@
          lbl = trim(label)//' VELOCITY DISTRS VS '//'V'//c
          if (idimv==1) then
             write (chr,93) fvm(1,2)
-            vmax = fv(1,1)
+            vmax = fv(nmv21+1,1)
             vmin = -vmax
          else if (idimv==3) then
             write (chr,94) fvm(1,2), fvm(2,2), fvm(3,2)
-            vmax = max(fv(1,1),fv(1,2),fv(1,3))
+            vmax = max(fv(nmv21+1,1),fv(nmv21+1,2),fv(nmv21+1,3))
             vmin = -vmax
          endif
-         call DISPR(fv(2,1),lbl,vmin,vmax,isc,ist,mks,nmv2,nmvf,idimv,  &
+         call DISPR(fv(1,1),lbl,vmin,vmax,isc,ist,mks,nmv21,nmvf,idimv, &
+     &chr,chrs,irc)
+         if (irc > 127) then
+            npl = irc - 128
+            if (npl==0) call CLRSCRN
+            irc = 0
+         endif
+      endif
+      end subroutine
+!
+!-----------------------------------------------------------------------
+      subroutine displayfe1(fe,wk,label,itime,nmv,irc)
+! displays energy distribution functions
+! fe = energy distribution
+! wk = total energy contained in distribution
+! label = long character string label for plot
+! itime = current time step
+! nmv = number of velocity intervals
+! irc = return code (0 = normal return)
+      implicit none
+      integer, intent(in) :: itime, nmv
+      integer, intent(inout) :: irc
+      real, intent(in) :: wk
+      real, dimension(:,:), intent(inout) :: fe
+      character(len=*), intent(in) :: label
+! isc = 999 = use default display scale
+! ist = 1 = display positive values only
+! mks = 0 = cycle through line styles
+! local data
+      integer :: isc = 999, ist = 1, mks = 0
+      integer :: nmvf, nmv21
+      real :: emax, emin
+      character(len=12) :: c
+      character(len=54) :: lbl
+      character(len=45) :: chr
+      character(len=10), dimension(1) :: chrs
+   91 format(', T =',i7)
+   92 format(' TOTAL ENERGY =',e14.7)
+! chrs = short array of characters to label individual line samples
+      data chrs /'  ENERGY  '/
+      if (npl==0) return
+      nmvf = size(fe,1)
+      nmv21 = 2*nmv + 1
+      write (c,91) itime
+      lbl = trim(label)//' ENERGY DISTR VS ENERGY'//c
+      write (chr,92) wk
+      emax = 2.0*fe(nmv21+1,1)
+      emin = 0.0
+      call DISPR(fe(1,1),lbl,emin,emax,isc,ist,mks,nmv21,nmvf,1,chr,    &
+     &chrs(1),irc)
+      if (irc > 127) then
+         npl = irc - 128
+         if (npl==0) call CLRSCRN
+         irc = 0
+      endif
+      end subroutine
+!
+!-----------------------------------------------------------------------
+      subroutine displayfvb1(fv,fvm,label,itime,nmv,idt,irc)
+! displays velocity distribution functions
+! fv = velocity distribution
+! fvm = velocity moments
+! label = long character string label for plot
+! itime = current time step
+! nmv = number of velocity intervals
+! idt = (1,2,3) = display (individual,composite,both) functions
+! irc = return code (0 = normal return)
+      implicit none
+      integer, intent(in) :: itime, nmv, idt
+      integer, intent(inout) :: irc
+      real, dimension(:,:), intent(inout) :: fv
+      real, dimension(:,:), intent(in) :: fvm
+      character(len=*), intent(in) :: label
+! isc = 999 = use default display scale
+! ist = 1 = display positive values only
+! mks = 0 = cycle through line styles
+! local data
+      integer :: isc = 999, ist = 1, mks = 0
+      integer :: i, nmvf, nmv21, idimv
+      real :: vmax, vmin
+      character(len=12) :: c
+      character(len=3) :: cs
+      character(len=54) :: lbl
+      character(len=45) :: chr
+      character(len=5), dimension(2) :: chrs
+   91 format(', T =',i7)
+   92 format(' VD =',f9.6,' VTH =',f9.5)
+   93 format(' VTR =',f9.5,' VTL =',f9.5)
+! chrs = short array of characters to label individual line samples
+      data chrs /' VPR ',' VPL '/
+      if (npl==0) return
+      idimv = 2
+      nmvf = size(fv,1)
+      nmv21 = 2*nmv + 1
+      write (c,91) itime
+! each velocity distributions on its own plot
+      if (idt /= 2) then
+         do i = 1, idimv
+         cs = trim(adjustl(chrs(i)))
+         lbl = trim(label)//' VELOCITY DISTR VS '//cs//c
+         write (chr,92) fvm(i,1), fvm(i,2)
+         vmax = fv(nmv21+1,i)
+         vmin = -vmax
+         call DISPR(fv(1,i),lbl,vmin,vmax,isc,ist,mks,nmv21,nmvf,1,chr, &
+     &chrs(i),irc)
+         if (irc > 127) then
+            npl = irc - 128
+            if (npl==0) call CLRSCRN
+            irc = 0
+            return
+         endif
+         if (irc==1) return
+         enddo
+      endif
+! all velocity distributions on common plot
+      if (idt /= 1) then
+         lbl = trim(label)//' VELOCITY DISTRS VS '//'V'//c
+         write (chr,93) fvm(1,2), fvm(2,2)
+         vmax = max(fv(nmv21+1,1),fv(nmv21+1,2))
+         vmin = -vmax
+         call DISPR(fv(1,1),lbl,vmin,vmax,isc,ist,mks,nmv21,nmvf,idimv, &
      &chr,chrs,irc)
          if (irc > 127) then
             npl = irc - 128
@@ -700,6 +835,25 @@
       end subroutine
 !
 !-----------------------------------------------------------------------
+      subroutine dbgrasp1(part,np,label,itime,isc,omx,omy,omz,nx,iyp,ixp&
+     &,npx,irc)
+! displays phase space for magnetized plasma
+      implicit none
+      integer, intent(in) :: np, itime, isc, nx, iyp, ixp, npx
+      integer, intent(inout) :: irc
+      real, intent(in) :: omx, omy, omz
+      character(len=*), intent(in) :: label
+      real, dimension(:,:), intent(in) :: part
+! local data
+      integer :: idimp
+      idimp = size(part,1)
+! exit if co-ordinates out of range
+      if ((ixp.gt.idimp).or.(iyp.gt.idimp)) return
+      call BGRASP13(part,label,itime,isc,omx,omy,omz,nx,iyp,ixp,idimp,  &
+     &npx,np,irc)
+      end subroutine
+!
+!-----------------------------------------------------------------------
       subroutine dpmgrasp1(ppart,kpic,label,itime,isc,nx,iyp,ixp,ntsc,  &
      &irc)
 ! displays phase space for with marked or unmarked particles
@@ -725,6 +879,57 @@
       else
          call PGRASP13(ppart,kpic,label,itime,isc,nx,iyp,ixp,idimp,nppmx&
      &,mx1,irc)
+      endif
+      end subroutine
+!
+!-----------------------------------------------------------------------
+      subroutine dpmbgrasp1(ppart,kpic,label,itime,isc,omx,omy,omz,nx,  &
+     &iyp,ixp,ntsc,irc)
+! displays phase space for with marked or unmarked particles
+! for magnetized plasma
+! ntsc = (0,1) = (no,yes) color beam particles
+      implicit none
+      integer, intent(in) :: itime, isc, nx, iyp, ixp, ntsc
+      integer, intent(inout) :: irc
+      real, intent(in) :: omx, omy, omz
+      character(len=*), intent(in) :: label
+      real, dimension(:,:,:), intent(in) :: ppart
+      integer, dimension(:), intent(in) :: kpic
+! local data
+      integer :: idimp, nppmx, mx1, nomt, ltag
+      idimp = size(ppart,1); nppmx = size(ppart,2)
+      mx1 = size(kpic,1)
+! exit if co-ordinates out of range
+      if ((ixp.gt.idimp).or.(iyp.gt.idimp)) return
+! determine if magnetic fields points in one of the cartesian directions
+      nomt = 0
+      if (omx.ne.0.0) nomt = nomt + 1
+      if (omy.ne.0.0) nomt = nomt + 1
+      if (omz.ne.0.0) nomt = nomt + 1
+! magnetic field points in cartesian direction
+      if (nomt < 2) then
+! plot marked particles with color
+         if (ntsc > 0) then
+            ltag = idimp
+            call PMGRASP13(ppart,kpic,label,itime,isc,nx,iyp,ixp,idimp, &
+     &nppmx,mx1,ltag,irc)
+! plot unmarked particles with no colors
+         else
+            call PGRASP13(ppart,kpic,label,itime,isc,nx,iyp,ixp,idimp,  &
+     &nppmx,mx1,irc)
+         endif
+! magnetic field points in non-cartesian direction
+      else
+! plot marked particles with color
+         if (ntsc > 0) then
+            ltag = idimp
+            call PMBGRASP13(ppart,kpic,label,itime,isc,omx,omy,omz,nx,  &
+     &iyp,ixp,idimp,nppmx,mx1,ltag,irc)
+! plot unmarked particles with no colors
+         else
+            call PBGRASP13(ppart,kpic,label,itime,isc,omx,omy,omz,nx,iyp&
+     &,ixp,idimp,nppmx,mx1,irc)
+         endif
       endif
       end subroutine
 !

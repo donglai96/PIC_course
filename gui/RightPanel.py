@@ -146,7 +146,11 @@ class RightPanel(wx.Panel):
             cvf = float(cv)
         except ValueError:  # Cant convert to a number
             cvf = 0.0
-        if self.simframe.worker.simdata.has_key('tend'):
+        if (sys.version_info.major==3):
+            tval = 'tend' in self.simframe.worker.simdata
+        else:
+            tval =  self.simframe.worker.simdata.has_key('tend')
+        if tval:
             te = self.simframe.worker.simdata['tend']
             if cvf > te:
                 self.ffstate.SetLabel(str(cvf) + " is past end of sim.")

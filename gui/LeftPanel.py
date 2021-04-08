@@ -1,3 +1,4 @@
+from __future__ import print_function
 import wx
 import wx.stc as stc
 import numpy as NP
@@ -10,7 +11,8 @@ from matplotlib.colors import LogNorm
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.backends.backend_wx import NavigationToolbar2Wx
-from mpl_toolkits.axes_grid.anchored_artists import AnchoredText
+from matplotlib.offsetbox import AnchoredText
+#from mpl_toolkits.axes_grid.anchored_artists import AnchoredText
 from subprocess import Popen, PIPE
 import copy
 # import Image
@@ -149,7 +151,7 @@ class LeftPanel(wx.Panel):
             # self.movieWriter.setup(self.figure, self.movieFileName, self.dpi)
             fps = 15
             self.recordingSize = self.mycanvas.GetSize()
-            print self.recordingSize
+            print (self.recordingSize)
             self.moviePipe = Popen(
                 ['ffmpeg', '-f', 'rawvideo','-pix_fmt','argb','-s:v',str(self.recordingSize[0])+'x' +
                     str(self.recordingSize[1]) ,'-framerate', '24', '-i', '-', '-c:v', 'libx264', '-preset', 'veryslow', '-crf', '0','-r',
@@ -243,13 +245,13 @@ class LeftPanel(wx.Panel):
             True """
 
     def DrawPlot(self):
-    	if not hasattr(self.currentEvent, "data"): # Check if there is a data field set
-    		return # If does not exist, return and wait for data
+        if not hasattr(self.currentEvent, "data"): # Check if there is a data field set
+            return # If does not exist, return and wait for data
     	# Check if persistent vars _PV exists in data
         if not hasattr(self.currentEvent.data, "_PV"):
             self.currentEvent.data._PV = self.persistentVars # Create is if not
         else: # Copy persistent variables to object being draw
-            for key in self.persistentVars.iterkeys():
+            for key in iter(self.persistentVars):
                 if hasattr(self.currentEvent.data, key): #Check if key is in object
                     # Copy persistent value to object
                     setattr(self.currentEvent.data, key, self.persistentVars[key])

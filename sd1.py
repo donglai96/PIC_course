@@ -1,4 +1,5 @@
 #-----------------------------------------------------------------------
+from __future__ import print_function
 """
 High Level library for 1-2/2D Darwin OpenMP PIC code
 
@@ -57,10 +58,11 @@ bread_drestart13: read in basic restart file for darwin code
 dwrite_drestart13: write out restart diagnostic file for darwin code
 dread_drestart13: read in restart diagnostic file for darwin code
 
-written by Viktor K. Decyk and Joshua Kelly, UCLA
+written by Viktor K. Decyk, UCLA
 copyright 1999-2016, regents of the university of california
-update: december 11, 2017
+update: january 27, 2021
 """
+import sys
 import math
 import numpy
 
@@ -178,7 +180,7 @@ def calc_shift13(iuot):
 # accelerate convergence: update wpm
    if (wpm <= 10.0):
       wpm = 0.75*wpm
-   print >> iuot, "wpm=",wpm
+   print ("wpm=",wpm,file=iuot)
    q2m0 = wpm/s1.affp
 
 #-----------------------------------------------------------------------
@@ -191,13 +193,26 @@ def dpush_electrons13(ppart,kpic):
    """
    s1.wke[0] = 0.0
 # updates ppart and wke, and possibly ncl, ihole, irc
+# Boris pusher
    if (in1.mzf==0):
       mbpush1.wmbpush1(ppart,sb1.fxyze,sb1.byze,kpic,s1.ncl,s1.ihole,
                        in1.omx,qbme,in1.dt,in1.dt,in1.ci,s1.wke,
                        sb1.tpush,nx,in1.mx,ipbc,in1.relativity,plist,
                        irc)
+# Analytic Boris pusher
+   elif (in1.mzf==2):
+      mbpush1.wmabpush1(ppart,sb1.fxyze,sb1.byze,kpic,s1.ncl,s1.ihole,
+                        in1.omx,qbme,in1.dt,in1.dt,in1.ci,s1.wke,
+                        sb1.tpush,nx,in1.mx,ipbc,in1.relativity,plist,
+                        irc)
+# Exact Analytic pusher
+   elif (mzf==3):
+      mbpush1.wmeabpush1(ppart,sb1.fxyze,sb1.byze,kpic,s1.ncl,s1.ihole,
+                         in1.omx,qbme,in1.dt,in1.dt,in1.ci,s1.wke,
+                         sb1.tpush,nx,in1.mx,ipbc,in1.relativity,plist,
+                         irc)
 # zero force: updates ppart, wke and possibly ncl, ihole, and irc
-   else:
+   elif (in1.mzf==1):
       mbpush1.wmpush1zf(ppart,kpic,s1.ncl,s1.ihole,in1.dt,in1.ci,s1.wke,
                         sb1.tpush,in1.nx,in1.mx,ipbc,in1.relativity,
                         plist,irc)
@@ -229,12 +244,26 @@ def dpush_ions13(pparti,kipic):
    """
    s1.wki[0] = 0.0
 # updates pparti and wki, and possibly ncl, ihole, irc
+# Boris pusher
    if (in1.mzf==0):
       mbpush1.wmbpush1(pparti,sb1.fxyze,sb1.byze,kipic,s1.ncl,s1.ihole,
                        in1.omx,s1.qbmi,in1.dt,in1.dt,in1.ci,s1.wki,
                        sb1.tpush,nx,in1.mx,ipbc,in1.relativity,plist,
                        irc)
-   else:
+# Analytic Boris pusher
+   elif (in1.mzf==2):
+      mbpush1.wmabpush1(pparti,sb1.fxyze,sb1.byze,kipic,s1.ncl,s1.ihole,
+                        in1.omx,s1.qbmi,in1.dt,in1.dt,in1.ci,s1.wki,
+                        sb1.tpush,nx,in1.mx,ipbc,in1.relativity,plist,
+                        irc)
+# Exact Analytic pusher
+   elif (in1.mzf==3):
+      mbpush1.wmeabpush1(pparti,sb1.fxyze,sb1.byze,kipic,s1.ncl,
+                         s1.ihole,in1.omx,s1.qbmi,in1.dt,in1.dt,in1.ci,
+                         s1.wki,sb1.tpush,nx,in1.mx,ipbc,in1.relativity,
+                         plist,irc)
+# zero force: updates pparti, wki and possibly ncl, ihole, and irc
+   elif (in1.mzf==1):
       mpush1.wmpush1zf(pparti,kipic,s1.ncl,s1.ihole,in1.dt,in1.ci,
                        s1.wki,sb1.tpush,nx,in1.mx,ipbc,in1.relativity,
                        plist,irc)
@@ -295,14 +324,14 @@ def denergy_diag13(wt,ntime,iuot):
    if (ntime==0):
       sb1.s[5] = ws[0]
    if (in1.ndw > 0):
-      print >> iuot, "Total Field, Kinetic and Total Energies:"
+      print ("Total Field, Kinetic and Total Energies:",file=iuot)
       if (in1.movion==0):
          iuot.write("%14.7e %14.7e %14.7e\n" % (sb1.wef[0],s1.wke[0],
                     ws[0])) 
       else:
          iuot.write("%14.7e %14.7e %14.7e %14.7e\n" % (sb1.wef[0],
                     s1.wke[0],s1.wki[0],ws[0])) 
-      print >> iuot, "Electric(l,t) and Magnetic Energies = "
+      print ("Electric(l,t) and Magnetic Energies = ",file=iuot)
       iuot.write("%14.7e %14.7e %14.7e\n" % (s1.we[0],sb1.wf[0],
                  sb1.wb[0]))
    wt[s1.itw,:] = ([sb1.wef[0],s1.wke[0],s1.wki[0],ws[0],s1.we[0],
@@ -344,7 +373,12 @@ def init_edcurrent_diag13():
    """ initialize darwin electron current density diagnostic """
    global curet, iuje, oldcue
    fjename = "curek1." + s1.cdrun
-   in1.fjename[:] = fjename
+# write filename to diagnostic metafile
+   if (sys.version_info.major==3):
+      in1.fjename = fjename.ljust(in1.fjename.dtype.itemsize)
+   else:
+      in1.fjename[:] = fjename
+# open file
    in1.modesxje = int(min(in1.modesxje,nxh+1))
 # oldcue = previous current density
    oldcue = numpy.zeros((2,nxe),float_type,'F')
@@ -352,7 +386,7 @@ def init_edcurrent_diag13():
    curet = numpy.empty((2,in1.modesxje),complex_type,'F')
 # open file: updates njerec and possibly iuje
    if (in1.njerec==0):
-      mdiag1.dafopenvc1(curet,iuje,in1.njerec,fjename)
+      mdiag1.dafopenvc1(curet,sb1.iuje,in1.njerec,fjename)
 
 #-----------------------------------------------------------------------
 def edcurrent_diag13(vfield):
@@ -380,7 +414,7 @@ def del_edcurrent_diag13():
    """ delete darwin electron current density diagnostic """
    global curet, oldcue
    if (in1.njerec > 0):
-      in1.closeff(iuje)
+      in1.closeff(sb1.iuje)
       in1.njerec -= 1
    del curet, oldcue
 
@@ -389,7 +423,11 @@ def init_vdpotential_diag13():
    """ initialize darwin vector potential diagnostic """
    global vpott
    faname = "vpotk1." + s1.cdrun
-   in1.faname[:] = faname
+   if (sys.version_info.major==3):
+      in1.faname = faname.ljust(in1.faname.dtype.itemsize)
+   else:
+      in1.faname[:] = faname
+# open file
    in1.modesxa = int(min(in1.modesxa,nxh+1))
 # vpott = store selected fourier modes for vector potential
    vpott = numpy.empty((2,in1.modesxa),complex_type,'F')
@@ -451,7 +489,7 @@ def del_vdpotential_diag13():
    """ delete darwin vector potential diagnostic """
    global vpott
    if (in1.narec > 0):
-      in1.closeff(iua)
+      in1.closeff(sb1.iua)
       in1.narec -= 1
    del vpott
 # spectral analysis
@@ -465,7 +503,11 @@ def init_detfield_diag13():
    """ initialize darwin transverse efield diagnostic """
    global ett
    fetname = "etk1." + s1.cdrun
-   in1.fetname[:] = fetname
+   if (sys.version_info.major==3):
+      in1.fetname = fetname.ljust(in1.fetname.dtype.itemsize)
+   else:
+      in1.fetname[:] = fetname
+# open file
    in1.modesxet = int(min(in1.modesxet,nxh+1))
 # ett = store selected fourier modes for transverse efield
    ett = numpy.empty((2,in1.modesxet),complex_type,'F')
@@ -527,7 +569,7 @@ def del_detfield_diag13():
    """ delete darwin transverse efield diagnostic """
    global ett
    if (in1.netrec > 0):
-      in1.closeff(iuet)
+      in1.closeff(sb1.iuet)
       in1.netrec -= 1
    del ett
 # spectral analysis
@@ -541,7 +583,12 @@ def init_dbfield_diag13():
    """ initialize darwin magnetic field diagnostic """
    global bt
    fbname = "bk1." + s1.cdrun
-   in1.fbname[:] = fbname
+# write filename to diagnostic metafile
+   if (sys.version_info.major==3):
+      in1.fbname = fbname.ljust(in1.fbname.dtype.itemsize)
+   else:
+      in1.fbname[:] = fbname
+# open file
    in1.modesxb = int(min(in1.modesxb,nxh+1))
 # bt = store selected fourier modes for magnetic field
    bt = numpy.empty((2,in1.modesxb),complex_type,'F')
@@ -571,7 +618,7 @@ def del_dbfield_diag13():
    """ delete darwin magnetic field diagnostic """
    global bt
    if (in1.nbrec > 0):
-      in1.closeff(iub)
+      in1.closeff(sb1.iub)
       in1.nbrec -= 1
    del bt
    in1.ceng = affp
@@ -632,37 +679,37 @@ def print_dtimings13(tinit,tloop,iuot):
    tloop = loop elapsed time
    iuot = output file descriptor
    """
-   print >> iuot
-   print >> iuot, "initialization time = ", tinit
-   print >> iuot, "deposit time = ", s1.tdpost[0]
-   print >> iuot, "current deposit time = ", sb1.tdjpost[0]
-   print >> iuot, "current derivative deposit time = ", tdcjpost[0]
+   print (file=iuot)
+   print ("initialization time = ",tinit,file=iuot)
+   print ("deposit time = ",s1.tdpost[0],file=iuot)
+   print ("current deposit time = ",sb1.tdjpost[0],file=iuot)
+   print ("current derivative deposit time = ",tdcjpost[0],file=iuot)
    s1.tdpost[0] += sb1.tdjpost[0] + tdcjpost[0]
-   print >> iuot, "total deposit time = ", s1.tdpost[0]
+   print ("total deposit time = ",s1.tdpost[0],file=iuot)
    tguard[0] += sb1.tguard[0] + s1.tguard[0]
-   print >> iuot, "guard time = ", tguard[0]
+   print ("guard time = ",tguard[0],file=iuot)
    tfield[0] += sb1.tfield[0] + s1.tfield[0]
-   print >> iuot, "solver time = ", tfield[0]
-   print >> iuot, "fft time = ", s1.tfft[0]
-   print >> iuot, "push time = ", sb1.tpush[0]
-   print >> iuot, "sort time = ", sb1.tsort[0]
+   print ("solver time = ",tfield[0],file=iuot)
+   print ("fft time = ",s1.tfft[0],file=iuot)
+   print ("push time = ",sb1.tpush[0],file=iuot)
+   print ("sort time = ",sb1.tsort[0],file=iuot)
    tfield[0] += tguard[0] + s1.tfft[0]
-   print >> iuot, "total solver time = ", tfield[0]
+   print ("total solver time = ",tfield[0],file=iuot)
    time = s1.tdpost[0] + sb1.tpush[0] + sb1.tsort[0]
-   print >> iuot, "total particle time = ", time
+   print ("total particle time = ",time,file=iuot)
    tdiag[0] += sb1.tdiag[0] + s1.tdiag[0]
-   print >> iuot, "total diagnostic time = ", tdiag[0]
+   print ("total diagnostic time = ",tdiag[0],file=iuot)
    ws[0] = time + tfield[0] + tdiag[0]
    tloop = tloop - ws[0]
-   print >> iuot, "total and additional time = ", ws[0], ",", tloop
-   print >> iuot
+   print ("total and additional time = ",ws[0],",",tloop,file=iuot)
+   print (file=iuot)
 # summarize particle timings
    ws[0] = 1.0e+09/(float(nloop)*float(np+npi))
-   print >> iuot, "Push Time (nsec) = ", sb1.tpush[0]*ws[0]
-   print >> iuot, "Deposit Time (nsec) = ", s1.tdpost[0]*ws[0]
-   print >> iuot, "Sort Time (nsec) = ", sb1.tsort[0]*ws[0]
-   print >> iuot, "Total Particle Time (nsec) = ", time*ws[0]
-   print >> iuot
+   print ("Push Time (nsec) = ",sb1.tpush[0]*ws[0],file=iuot)
+   print ("Deposit Time (nsec) = ",s1.tdpost[0]*ws[0],file=iuot)
+   print ("Sort Time (nsec) = ",sb1.tsort[0]*ws[0],file=iuot)
+   print ("Total Particle Time (nsec) = ",time*ws[0],file=iuot)
+   print (file=iuot)
 
 #-----------------------------------------------------------------------
 def reset_ddiags13():
@@ -731,6 +778,19 @@ def close_ddiags13(iudm):
 # magnetic field diagnostic
    if (in1.ntb > 0):
       del_dbfield_diag13()
+# velocity diagnostic
+   if (in1.ntv > 0):
+      s1.del_evelocity_diag1()
+      if (in1.movion==1):
+         s1.del_ivelocity_diag1()
+# trajectory diagnostic
+   if (in1.ntt > 0):
+      s1.del_traj_diag1()
+# phase space diagnostic
+   if (in1.nts > 0):
+      s1.del_ephasesp_diag1()
+      if (in1.movion==1):
+         s1.del_iphasesp_diag1()
 # ion diagnostics
    if (in1.movion==1):
 # ion density diagnostic
@@ -754,12 +814,6 @@ def close_ddiags13(iudm):
       del_dspectrum13()
    if (in1.ntw > 0):
       sb1.del_energy_diag13()
-   if (in1.ntv > 0):
-      s1.del_evelocity_diag1()
-      if (in1.movion==1):
-         s1.del_ivelocity_diag1()
-   if (in1.ntt > 0):
-      s1.del_traj_diag1()
 
 #-----------------------------------------------------------------------
 def initialize_ddiagnostics13(ntime):
@@ -841,6 +895,14 @@ def initialize_ddiagnostics13(ntime):
 # initialize trajectory diagnostic: allocates partd, fvtp, fvmtp
    if (in1.ntt > 0):
       sb1.init_traj_diag13(ntime)
+
+# initialize phase space diagnostic:
+   if (in1.nts > 0):
+# electrons: allocates fvs
+      sb1.init_ephasesp_diag13()
+# ions: allocates fvsi
+      if (in1.movion==1):
+         sb1.init_iphasesp_diag13()
 
 #-----------------------------------------------------------------------
 def darwin_predictor13(q2m0):
@@ -1040,7 +1102,7 @@ def bread_drestart13(iur):
 # read in darwin electric field field
    s1.i1[:] = numpy.fromfile(iur,int_type,1); it = s1.i1[0]
    if (it > numpy.size(cus,1)):
-      print "cus restart error, size(cus)=",it,numpy.size(cus,1)
+      print ("cus restart error, size(cus)=",it,numpy.size(cus,1))
       exit(1)
    if (it > 0):
       il = 2*it
@@ -1066,7 +1128,10 @@ def dwrite_drestart13(iur):
          it = mdiag1.fnrecl(in1.fjename)
          s1.i1[0] = it; s1.i1.tofile(iur)
          if (it > 0):
-            s1.fname[:] = ''.join(in1.fjename)
+            if (sys.version_info.major==3):
+               s1.fname = in1.fjename
+            else:
+               s1.fname[:] = ''.join(in1.fjename)
             s1.fname.tofile(iur)
 
 # write out vector potential diagnostic parameter
@@ -1079,7 +1144,10 @@ def dwrite_drestart13(iur):
          it = mdiag1.fnrecl(in1.faname)
          s1.i1[0] = it; s1.i1.tofile(iur)
          if (it > 0):
-            s1.fname[:] = ''.join(in1.faname)
+            if (sys.version_info.major==3):
+               s1.fname = in1.faname
+            else:
+               s1.fname[:] = ''.join(in1.faname)
             s1.fname.tofile(iur)
 # write out spectrum flag
       if ((in1.nda==2) or (in1.nda==3)):
@@ -1104,7 +1172,10 @@ def dwrite_drestart13(iur):
          it = mdiag1.fnrecl(in1.fetname)
          s1.i1[0] = it; s1.i1.tofile(iur)
          if (it > 0):
-            s1.fname[:] = ''.join(in1.fetname)
+            if (sys.version_info.major==3):
+               s1.fname = in1.fetname
+            else:
+               s1.fname[:] = ''.join(in1.fetname)
             s1.fname.tofile(iur)
 # write out spectrum flag
       if ((in1.ndet==2) or (in1.ndet==3)):
@@ -1131,7 +1202,10 @@ def dwrite_drestart13(iur):
          it = mdiag1.fnrecl(in1.fbname)
          s1.i1[0] = it; s1.i1.tofile(iur)
          if (it > 0):
-            s1.fname[:] = ''.join(in1.fbname)
+            if (sys.version_info.major==3):
+               s1.fname = in1.fbname
+            else:
+               s1.fname[:] = ''.join(in1.fbname)
             s1.fname.tofile(iur)
 
 # write out ion current density diagnostic parameter
@@ -1145,7 +1219,10 @@ def dwrite_drestart13(iur):
             it = mdiag1.fnrecl(in1.fjiname)
             s1.i1[0] = it; s1.i1.tofile(iur)
             if (it > 0):
-               s1.fname[:] = ''.join(in1.fjiname)
+               if (sys.version_info.major==3):
+                  s1.fname = in1.fjiname
+               else:
+                  s1.fname[:] = ''.join(in1.fjiname)
                s1.fname.tofile(iur)
 # write out spectrum flag
          if ((in1.ndji==2) or (in1.ndji==3)):
@@ -1181,7 +1258,7 @@ def dread_drestart13(iur):
          sb1.s[4] = s1.wt[0,2]
          sb1.s[5] = s1.wt[0,3]
          sb1.s[6] = sb1.s[5]
-         for it in xrange(1,s1.itw):
+         for it in range(1,s1.itw):
             sb1.s[0] += s1.wt[it,4]
             sb1.s[1] += s1.wt[it,1]
             sb1.s[2] += s1.wt[it,5]
@@ -1193,7 +1270,7 @@ def dread_drestart13(iur):
 # read in electron current density diagnostic parameter
    s1.i1[:] = numpy.fromfile(iur,int_type,1); it = s1.i1[0]
    if (it != in1.ntje):
-      print "restart error: read/expected ntje=", it, in1.ntje
+      print ("restart error: read/expected ntje=",it,in1.ntje)
       exit(1)
 # read in record location
    if (in1.ntje > 0):
@@ -1202,15 +1279,18 @@ def dread_drestart13(iur):
       if (in1.njerec > 0):
          s1.i1[:] = numpy.fromfile(iur,int_type,1); it = s1.i1[0]
          if (it==0):
-            print "ntje zero length record error"
+            print ("ntje zero length record error")
             exit(1)
-         s1.fname[:] = numpy.fromfile(iur,'S32',1)
-         in1.fjename[:] = str(s1.fname[0])
+         if (sys.version_info.major==3):
+            in1.fjename = numpy.fromfile(iur,'S1',32)
+         else:
+            s1.fname[:] = numpy.fromfile(iur,'S32',1)
+            in1.fjename[:] = str(s1.fname[0])
 
 # read in vector potential diagnostic parameter
    s1.i1[:] = numpy.fromfile(iur,int_type,1); it = s1.i1[0]
    if (it != in1.nta):
-      print "restart error: read/expected nta=", it, in1.nta
+      print ("restart error: read/expected nta=",it,in1.nta)
       exit(1)
 # read in record location
    if (in1.nta > 0):
@@ -1219,10 +1299,13 @@ def dread_drestart13(iur):
       if (in1.narec > 0):
          s1.i1[:] = numpy.fromfile(iur,int_type,1); it = s1.i1[0]
          if (it==0):
-            print "nta zero length record error"
+            print ("nta zero length record error")
             exit(1)
-         s1.fname[:] = numpy.fromfile(iur,'S32',1)
-         in1.faname[:] = str(s1.fname[0])
+         if (sys.version_info.major==3):
+            in1.faname = numpy.fromfile(iur,'S1',32)
+         else:
+            s1.fname[:] = numpy.fromfile(iur,'S32',1)
+            in1.faname[:] = str(s1.fname[0])
 # read in spectrum flag
       s1.i1[:] = numpy.fromfile(iur,int_type,1); sb1.ita = s1.i1[0]
 # read in spectrum sizes and data
@@ -1230,17 +1313,17 @@ def dread_drestart13(iur):
          s1.i4[:] = numpy.fromfile(iur,int_type,4)
          iq = s1.i4[0]; ir = s1.i4[1]; it = s1.i4[2]; ip = s1.i4[3]
          if (iq != 2):
-            print "vpks size error: read/expected 2 =", iq
+            print ("vpks size error: read/expected 2 =",iq)
             exit(1)
          if (ir != 4):
-            print "vpks size error: read/expected 4 =", ir
+            print ("vpks size error: read/expected 4 =",ir)
             exit(1)
          if (it != in1.modesxa):
-            print ("vpks size error: read/expected modesxa=", it,
+            print ("vpks size error: read/expected modesxa=",it,
                     in1.modesxa)
             exit(1)
          if (ip != iw):
-            print "vpks size error: read/expected iw=", ip, iw
+            print ("vpks size error: read/expected iw=",ip,iw)
             exit(1)
          il = iq*ir*it*ip
          vpks[:,:,:,:] = (numpy.fromfile(iur,double_type,il).
@@ -1249,7 +1332,7 @@ def dread_drestart13(iur):
 # read in transverse efield diagnostic parameter
    s1.i1[:] = numpy.fromfile(iur,int_type,1); it = s1.i1[0]
    if (it != in1.ntet):
-      print "restart error: read/expected ntet=", it, in1.ntet
+      print ("restart error: read/expected ntet=",it,in1.ntet)
       exit(1)
 # read in record location
    if (in1.ntet > 0):
@@ -1258,10 +1341,13 @@ def dread_drestart13(iur):
       if (in1.netrec > 0):
          s1.i1[:] = numpy.fromfile(iur,int_type,1); it = s1.i1[0]
          if (it==0):
-            print "ntet zero length record error"
+            print ("ntet zero length record error")
             exit(1)
-         s1.fname[:] = numpy.fromfile(iur,'S32',1)
-         in1.fetname[:] = str(s1.fname[0])
+         if (sys.version_info.major==3):
+            in1.fetname = numpy.fromfile(iur,'S1',32)
+         else:
+            s1.fname[:] = numpy.fromfile(iur,'S32',1)
+            in1.fetname[:] = str(s1.fname[0])
 # read in spectrum flag
       s1.i1[:] = numpy.fromfile(iur,int_type,1); sb1.itet = s1.i1[0]
 # read in spectrum sizes and data
@@ -1269,17 +1355,17 @@ def dread_drestart13(iur):
          s1.i4[:] = numpy.fromfile(iur,int_type,4)
          iq = s1.i4[0]; ir = s1.i4[1]; it = s1.i4[2]; ip = s1.i4[3]
          if (iq != 2):
-            print "vpkset size error: read/expected 2 =", iq
+            print ("vpkset size error: read/expected 2 =",iq)
             exit(1)
          if (ir != 4):
-            print "vpkset size error: read/expected 4 =", ir
+            print ("vpkset size error: read/expected 4 =",ir)
             exit(1)
          if (it != in1.modesxet):
-            print ("vpkset size error: read/expected modesxet=", it,
+            print ("vpkset size error: read/expected modesxet=",it,
                     in1.modesxet)
             exit(1)
          if (ip != iw):
-            print "vpkset size error: read/expected iw=", ip, iw
+            print ("vpkset size error: read/expected iw=",ip,iw)
             exit(1)
          il = iq*ir*it*ip
          vpkset[:,:,:,:] = (numpy.fromfile(iur,double_type,il).
@@ -1288,7 +1374,7 @@ def dread_drestart13(iur):
 # read in magnetic field diagnostic parameter
    s1.i1[:] = numpy.fromfile(iur,int_type,1); it = s1.i1[0]
    if (it != in1.ntb):
-      print "restart error: read/expected nteb=", it, in1.ntb
+      print ("restart error: read/expected nteb=",it,in1.ntb)
       exit(1)
 # read in record location
    if (in1.ntb > 0):
@@ -1297,16 +1383,19 @@ def dread_drestart13(iur):
       if (in1.nbrec > 0):
          s1.i1[:] = numpy.fromfile(iur,int_type,1); it = s1.i1[0]
          if (it==0):
-            print "ntb zero length record error"
+            print ("ntb zero length record error")
             exit(1)
-         s1.fname[:] = numpy.fromfile(iur,'S32',1)
-         in1.fbname[:] = str(s1.fname[0])
+         if (sys.version_info.major==3):
+            in1.fbname = numpy.fromfile(iur,'S1',32)
+         else:
+            s1.fname[:] = numpy.fromfile(iur,'S32',1)
+            in1.fbname[:] = str(s1.fname[0])
 
 # read in ion current density diagnostic parameter
    if (in1.movion==1):
       s1.i1[:] = numpy.fromfile(iur,int_type,1); it = s1.i1[0]
       if (it != in1.ntji):
-         print "restart error: read/expected ntji=", it, in1.ntji
+         print ("restart error: read/expected ntji=",it,in1.ntji)
          exit(1)
 # read in record location
       if (in1.ntji > 0):
@@ -1315,10 +1404,13 @@ def dread_drestart13(iur):
          if (in1.njirec > 0):
             s1.i1[:] = numpy.fromfile(iur,int_type,1); it = s1.i1[0]
             if (it==0):
-               print "ntji zero length record error"
+               print ("ntji zero length record error")
                exit(1)
-            s1.fname[:] = numpy.fromfile(iur,'S32',1)
-            in1.fjiname[:] = str(s1.fname[0])
+            if (sys.version_info.major==3):
+               in1.fjiname = numpy.fromfile(iur,'S1',32)
+            else:
+               s1.fname[:] = numpy.fromfile(iur,'S32',1)
+               in1.fjiname[:] = str(s1.fname[0])
 # read in spectrum flag
          s1.i1[:] = numpy.fromfile(iur,int_type,1); sb1.itji = s1.i1[0]
 # read in spectrum sizes and data
@@ -1326,17 +1418,17 @@ def dread_drestart13(iur):
             s1.i4[:] = numpy.fromfile(iur,int_type,4)
             iq = s1.i4[0]; ir = s1.i4[1]; it = s1.i4[2]; ip = s1.i4[3]
             if (iq != 2):
-               print "vpksji size error: read/expected 2 =", iq
+               print ("vpksji size error: read/expected 2 =",iq)
                exit(1)
             if (ir != 4):
-               print "vpksji size error: read/expected 4 =", ir
+               print ("vpksji size error: read/expected 4 =",ir)
                exit(1)
             if (it != in1.modesxji):
                print ("vpksji size error: read/expected modesxji=",it,
                        in1.modesxji)
                exit(1)
             if (ip != s1.iwi):
-               print "vpksji size error: read/expected iwi=", ip, s1.iwi
+               print ("vpksji size error: read/expected iwi=",ip,s1.iwi)
                exit(1)
             il = iq*ir*it*ip
             sb1.vpksji[:,:,:,:] = (numpy.fromfile(iur,double_type,il).

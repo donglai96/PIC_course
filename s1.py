@@ -1,4 +1,5 @@
 #-----------------------------------------------------------------------
+from __future__ import print_function
 """
 High Level library for 1D Electrostatic OpenMP PIC code
 
@@ -63,6 +64,14 @@ init_traj_diag1: initialize trajectory diagnostic
 traj_diag1: trajectory diagnostic
 del_traj_diag1: delete trajectory diagnostic
 
+init_ephasesp_diag1: initialize electron phase space diagnostic
+ephasesp_diag1: electron phase space diagnostic
+del_ephasesp_diag1: delete electron phase space diagnostic
+
+init_iphasesp_diag1: initialize ion phase space diagnostic
+iphasesp_diag1: ion phase space diagnostic
+del_iphasesp_diag1: delete ion electron phase space diagnostic
+
 print_timings1: print timing summaries
 
 reset_diags1: reset electrostatic diagnostics
@@ -79,10 +88,11 @@ dwrite_restart1: write out restart diagnostic file for electrostatic
 dread_restart1: read in restart diagnostic file for electrostatic code
 close_restart1: close reset and restart files
 
-written by Viktor K. Decyk and Joshua Kelly, UCLA
+written by Viktor K. Decyk, UCLA
 copyright 1999-2016, regents of the university of california
-update: december 9, 2017
+update: february 2, 2021
 """
+import sys
 import math
 import numpy
 
@@ -120,8 +130,9 @@ itdi = 0
 # default Fortran unit numbers
 iuin = 8; iudm = 19
 iude = 10; iup = 11; iuel = 12
-iufe = 23; iufi = 24
-iudi = 20
+iufe = 23; iuve = 25; iut = 28; iuse = 29
+iudi = 20; iufi = 24; iuvi = 26; iusi = 30
+wkt = numpy.empty((1),float_type)
 
 # declare and initialize timing data
 itime = numpy.empty((4),numpy.int32)
@@ -148,7 +159,7 @@ nx = int(math.pow(2,in1.indx)); nxh = int(nx/2)
 # npi = total number of ions in simulation
 if (in1.movion > 0):
    npi = in1.npxi + in1.npxbi
-nxe = nx + 2; nxeh = nxe/2
+nxe = nx + 2; nxeh = int(nxe/2)
 # mx1 = number of tiles in x direction
 mx1 = int((nx - 1)/in1.mx + 1)
 # nloop = number of time steps in simulation
@@ -267,7 +278,7 @@ def reorder_electrons1(irc2):
    while (irc2[0] != 0):
       iter += 1
       if (iter > nter):
-         print "reorder_electrons1: iteration exceeded"
+         print ("reorder_electrons1: iteration exceeded")
          exit(1)
 # ihole overflow
       if (irc2[0]==1):
@@ -325,9 +336,9 @@ def push_electrons1(ppart,kpic):
 # updates part, wke and possibly ncl, ihole, and irc
    if (in1.mzf==0):
       mpush1.wmpush1(ppart,fxe,kpic,ncl,ihole,qbme,in1.dt,in1.ci,wke,
-                     tpush,nx,in1.mx,ipbc,in1.relativity,plist,irc)
+                     tpush,nx,in1.mx,ipbc,in1.relativity,plist,irc)             
 # zero force: updates part, wke and possibly ncl, ihole, and irc
-   else:
+   elif (in1.mzf==1):
       mpush1.wmpush1zf(ppart,kpic,ncl,ihole,in1.dt,in1.ci,wke,tpush,nx,
                        in1.mx,ipbc,in1.relativity,plist,irc)
 
@@ -417,7 +428,7 @@ def reorder_ions1(irc2):
    while (irc2[0] != 0):
       iter += 1
       if (iter > nter):
-         print "reorder_ions1: iteration exceeded"
+         print ("reorder_ions1: iteration exceeded")
          exit(1)
 # ihole overflow
       if (irc2[0]==1):
@@ -477,7 +488,7 @@ def push_ions1(pparti,kipic):
       mpush1.wmpush1(pparti,fxe,kipic,ncl,ihole,qbmi,in1.dt,in1.ci,wki,
                      tpush,nx,in1.mx,ipbc,in1.relativity,plist,irc)
 # zero force: updates pparti, wki and possibly ncl, ihole, and irc
-   else:
+   elif (in1.mzf==1):
       mpush1.wmpush1zf(pparti,kipic,ncl,ihole,in1.dt,in1.ci,wki,tpush,
                        nx,in1.mx,ipbc,in1.relativity,plist,irc)
    wki[0] = wki[0]*in1.rmass
@@ -552,7 +563,7 @@ def energy_diag1(wt,ntime,iuot):
    if (ntime==0):
       s[2] = ws[0]
    if (in1.ndw > 0):
-      print >> iuot, "Field, Kinetic and Total Energies:"
+      print ("Field, Kinetic and Total Energies:",file=iuot)
       if (in1.movion==0):
          iuot.write("%14.7e %14.7e %14.7e\n" % (we[0],wke[0],ws[0])) 
       else:
@@ -576,13 +587,14 @@ def print_energy1(wt,iuot):
    global s, itw
    swe = s[0]; swke = s[1]
    s[2] = (s[3] - s[2])/wt[0,3]
-   print >> iuot, "Energy Conservation = ", float(s[2])
+   print ("Energy Conservation = ",float(s[2]),file=iuot)
    swe = swe/float(itw)
-   print >> iuot, "Average Field Energy <WE> = ", float(swe)
+   print ("Average Field Energy <WE> = ",float(swe),file=iuot)
    swke = swke/float(itw)
-   print >> iuot, "Average Electron Kinetic Energy <WKE> = ",float(swke)
-   print >> iuot, "Ratio <WE>/<WKE>= ", float(swe/swke)
-   print >> iuot
+   print ("Average Electron Kinetic Energy <WKE> = ",float(swke),
+          file=iuot)
+   print ("Ratio <WE>/<WKE>= ",float(swe/swke),file=iuot)
+   print (file=iuot)
 
 #-----------------------------------------------------------------------
 def del_energy_diag1():
@@ -629,7 +641,12 @@ def init_edensity_diag1():
    """ initialize electron density diagnostic """
    global denet, iude
    fdename = "denek1." + cdrun
-   in1.fdename[:] = fdename
+# write filename to diagnostic metafile
+   if (sys.version_info.major==3):
+      in1.fdename = fdename.ljust(in1.fdename.dtype.itemsize)
+   else:
+      in1.fdename[:] = fdename
+# open file
    in1.modesxde = int(min(in1.modesxde,nxh+1))
 # denet = store selected fourier modes for electron density
    denet = numpy.empty((in1.modesxde),complex_type,'F')
@@ -672,7 +689,12 @@ def init_idensity_diag1():
    """ initialize ion density diagnostic """
    global denit, iudi
    fdiname = "denik1." + cdrun
-   in1.fdiname[:] = fdiname
+# write filename to diagnostic metafile
+   if (sys.version_info.major==3):
+      in1.fdiname = fdiname.ljust(in1.fdiname.dtype.itemsize)
+   else:
+      in1.fdiname[:] = fdiname
+# open file
    in1.modesxdi = int(min(in1.modesxdi,nxh+1))
 # denit = store selected fourier modes for ion density
    denit = numpy.empty((in1.modesxdi),complex_type,'F')
@@ -751,7 +773,12 @@ def init_potential_diag1():
    """ initialize potential diagnostic """
    global pott, iup
    fpname = "potk1." + cdrun
-   in1.fpname[:] = fpname
+# write filename to diagnostic metafile
+   if (sys.version_info.major==3):
+      in1.fpname = fpname.ljust(in1.fpname.dtype.itemsize)
+   else:
+      in1.fpname[:] = fpname
+# open file
    in1.modesxp = int(min(in1.modesxp,nxh+1))
 # pott = store selected fourier modes for potential
    pott = numpy.empty((in1.modesxp),complex_type,'F')
@@ -825,7 +852,12 @@ def init_elfield_diag1():
    """ initialize longitudinal efield diagnostic """
    global elt, iuel
    felname = "elk1." + cdrun
-   in1.felname[:] = felname
+# write filename to diagnostic metafile
+   if (sys.version_info.major==3):
+      in1.felname = felname.ljust(in1.felname.dtype.itemsize)
+   else:
+      in1.felname[:] = felname
+# open file
    in1.modesxel = int(min(in1.modesxel,nxh+1))
 # elt = store selected fourier modes for longitudinal efield
    elt = numpy.empty((in1.modesxel),complex_type,'F')
@@ -878,7 +910,12 @@ def init_efluidms_diag1():
       fmse = numpy.empty((in1.nprd,nxe),float_type,'F')
 # open file for real data: updates nferec and possibly iufe
       ffename = "fmer1." + cdrun
-      in1.ffename[:] = ffename
+# write filename to diagnostic metafile
+      if (sys.version_info.major==3):
+         in1.ffename = ffename.ljust(in1.ffename.dtype.itemsize)
+      else:
+         in1.ffename[:] = ffename
+# open file
       if (in1.nferec==0):
          mdiag1.dafopenv1(fmse,nx,iufe,in1.nferec,ffename)
 
@@ -917,12 +954,26 @@ def del_efluidms_diag1():
 def init_ifluidms_diag1():
    """ initialize ion fluid moments diagnostic """
    global fmsi, iufi
+# calculate first dimension of fluid arrays
+   if (in1.npro==1):
+      in1.nprd = 1
+   elif (in1.npro==2):
+      in1.nprd = 2
+   elif (in1.npro==3):
+      in1.nprd = 3
+   elif (in1.npro==4):
+      in1.nprd = 5
    if ((in1.ndfm==2) or (in1.ndfm==3)):
 # fmsi = ion fluid moments
       fmsi = numpy.empty((in1.nprd,nxe),float_type,'F')
 # open file for real data: updates nfirec and possibly iufi
       ffiname = "fmir1." + cdrun
-      in1.ffiname[:] = ffiname
+# write filename to diagnostic metafile
+      if (sys.version_info.major==3):
+         in1.ffiname = ffiname.ljust(in1.ffiname.dtype.itemsize)
+      else:
+         in1.ffiname[:] = ffiname
+# open file
       if (in1.nfirec==0):
           mdiag1.dafopenv1(fmsi,nx,iufi,in1.nfirec,ffiname)
 
@@ -945,7 +996,7 @@ def ifluidms_diag1(fmsi):
       mgard1.mamcguard1(fmsi,tdiag,nx)
 # calculates fluid quantities from fluid moments: updates fmsi
       mdiag1.mfluidqs1(fmsi,tdiag,in1.npro,nx)
-      fmsi[:,:]  = in1.rmass*fmsi
+      fmsi[:,:] = in1.rmass*fmsi
 # write real space diagnostic output: updates nfirec
       mdiag1.dafwritev1(fmsi,tdiag,iufi,in1.nfirec,nx)
 
@@ -961,84 +1012,211 @@ def del_ifluidms_diag1():
 #-----------------------------------------------------------------------
 def init_evelocity_diag1():
    """ initialize electron velocity diagnostic """
-   global fv, sfv, fvm, mtv, itv, fvtm
+   global fv, fe, sfv, fvm, eci, mtv, itv, fvtm, wkt
+   in1.nfvd = 0; in1.nfed = 0
+   if ((in1.nvft==1) or (in1.nvft==3)):
+      in1.nfvd = in1.ndim
+   if ((in1.nvft==2) or (in1.nvft==3)):
+      in1.nfed = 1
    mtv = int((nloop - 1)/in1.ntv) + 1; itv = 0
+   eci = in1.ci
+   if (in1.relativity==0):
+      eci = 0.0
+   wkt[:] = 0.0
+   if ((in1.ndv==1) or (in1.ndv==3)):
+# estimate maximum electron velocity or momentum
+      ws = 0.0
+      if (in1.npx > 0):
+         ws = 4.0*in1.vtx+abs(in1.vx0)
+      if (in1.npxb > 0):
+         ws = max(ws,4.0*in1.vtdx+abs(in1.vdx))
+# cylindrical not supported in electrostatic code
+      if (in1.nvft < 4):
 # fv = global electron velocity distribution functions
-   fv = numpy.empty((2*in1.nmv+2,in1.ndim),float_type,'F')
-# sfv = electron velocity distribution functions in tile
-   sfv = numpy.empty((2*in1.nmv+2,in1.ndim,mx1+1),float_type,'F')
+         fv = numpy.empty((2*in1.nmv+2,in1.nfvd),float_type,'F')
 # fvm = electron vdrift, vth, entropy for global distribution
-   fvm = numpy.empty((in1.ndim,3),float_type,'F')
+         fvm = numpy.zeros((in1.ndim,3),float_type,'F')
+# fe = global electron energy distribution functions
+         fe = numpy.empty((2*in1.nmv+2,in1.nfed),float_type,'F')
+# sfv = electron velocity distribution functions in tile
+         sfv = numpy.empty((2*in1.nmv+2,in1.ndim,mx1+1),float_type,'F')
+# open file for electron velocity data: updates nverec and possibly iuve
+         fvename = "fve1." + cdrun
+# write filename to diagnostic metafile
+      if (sys.version_info.major==3):
+         in1.fvename = fvename.ljust(in1.fvename.dtype.itemsize)
+      else:
+         in1.fvename[:] = fvename
+      if (in1.nverec==0):
+         mdiag1.dafopenfv1(fvm,fv,fe,wkt,iuve,in1.nverec,fvename)
+# cartesian distribution
+      if ((in1.nvft==1) or (in1.nvft==3)):
 # fvtm = time history of electron vdrift, vth, and entropy
-   fvtm = numpy.zeros((mtv,in1.ndim,3),float_type,'F')
-   sfv[0,:,:] = 2.0*max(4.0*in1.vtx+abs(in1.vx0),
-                           4.0*in1.vtdx+abs(in1.vdx))
+         fvtm = numpy.zeros((mtv,in1.ndim,3),float_type,'F')
+# set velocity or momentum scale
+         fv[2*in1.nmv+1,0] = 2.0*ws
+# energy distribution
+      if ((in1.nvft==2) or (in1.nvft==3)):
+# set energy scale for electrons
+         ws = ws*ws
+         fe[2*in1.nmv+1,0] = ws/(1.0 + numpy.sqrt(1.0 + ws*eci*eci))
+# create dummy arrays to avoid undefined arguments later
+   else:
+      fv = numpy.empty((1,1),float_type,'F')
+      fe = numpy.empty((1,1),float_type,'F')
+      fvm = numpy.zeros((1,1),float_type,'F')
+      fvtm = numpy.zeros((1,1,1),float_type,'F')
 
 #-----------------------------------------------------------------------
-def evelocity_diag1(ppart,kpic,fv,fvm,fvtm):
+def evelocity_diag1(fv,fe,fvm,fvtm,wkt):
    """
    electron velocity diagnostic
-   input:
-   ppart = tiled electron particle arrays
-   kpic = number of electrons in each tile
    input/output:
-   fv = global electron velocity distribution functions
-   fvmi = electron vdrift, vth, entropy for global distribution
+   fv = global electron velocity distribution function
+   fe = global electron energy distribution function
+   fvm = electron vdrift, vth, entropy for global distribution
    fvtm = time history of electron vdrift, vth, and entropy
+   wkt = total energy contained in distribution
    """
    global itv
-# calculate electron distribution function and moments
-   mdiag1.mvpdist1(ppart,kpic,sfv,fvm,tdiag,np,in1.nmv)
-   fv[:,:] = sfv[:,:,mx1]
+   if ((in1.ndv==1) or (in1.ndv==3)):
+# calculate electron cartesian distribution function and moments
+      if ((in1.nvft==1) or (in1.nvft==3)):
+         sfv[2*in1.nmv+1,:,mx1] = fv[2*in1.nmv+1,:]
+         mdiag1.mvpdist1(ppart,kpic,sfv,fvm,tdiag,np,in1.nmv)
+         fv[:,:] = sfv[:,:,mx1]
 # store time history electron vdrift, vth, and entropy
-   fvtm[itv,:,:] = fvm
-   itv += 1
+         fvtm[itv,:,:] = fvm
+         itv += 1
+# electron energy distribution
+      if ((in1.nvft==2) or (in1.nvft==3)):
+         sfv[2*in1.nmv+1,0,mx1] = fe[2*in1.nmv+1,0]
+         mdiag1.merpdist1(ppart,kpic,sfv,eci,wkt,tdiag,in1.nmv)
+         fe[:,0] = sfv[:,0,mx1]
+# cylindrical not supported in electrostatic code
+      if (in1.nvft < 4):
+# write electron velocity-space diagnostic output: updates nverec
+         mdiag1.dafwritefv1(fvm,fv,fe,wkt,tdiag,iuve,in1.nverec)
 
 #-----------------------------------------------------------------------
 def del_evelocity_diag1():
    """ delete electron velocity diagnostic """
-   global fv, sfv, fvm, fvtm
-   del fv, sfv, fvm, fvtm
+   global fv, fe, sfv, fvm, fvtm
+   if (in1.nverec > 0):
+      in1.closeff(iuve)
+      in1.nverec -= 1
+   if ((in1.ndv==1) or (in1.ndv==3)):
+      del fv, fe, fvm
+   if ("sfv" in globals()):
+      del sfv
+   if ("fvtm" in globals()):
+      del fvtm
 
 #-----------------------------------------------------------------------
 def init_ivelocity_diag1():
    """ initialize ion velocity diagnostic """
-   global fvi, sfvi, fvmi, fvtmi
+   global fvi, fei, sfvi, fvmi, eci, mtv, itv, fvtmi, wkt, itv
+   in1.nfvd = 0; in1.nfed = 0
+   if ((in1.nvft==1) or (in1.nvft==3)):
+      in1.nfvd = in1.ndim
+   if ((in1.nvft==2) or (in1.nvft==3)):
+      in1.nfed = 1
+   mtv = int((nloop - 1)/in1.ntv) + 1; itv = 0
+   eci = in1.ci
+   if (in1.relativity==0):
+      eci = 0.0
+   wkt[:] = 0.0
+   if ((in1.ndv==2) or (in1.ndv==3)):
+# estimate maximum ion velocity or momentum
+      ws = 0.0
+      if (in1.npxi > 0):
+         ws = 4.0*vtxi+abs(in1.vxi0)
+      if (in1.npxbi > 0):
+         ws = max(ws,4.0*vtdxi+abs(in1.vdxi))
+# cylindrical not supported in electrostatic code
+      if (in1.nvft < 4):
 # fvi = global ion velocity distribution functions
-   fvi = numpy.empty((2*in1.nmv+2,in1.ndim),float_type,'F')
-# sfvi = ion velocity distribution functions in tile
-   sfvi = numpy.empty((2*in1.nmv+2,in1.ndim,mx1+1),float_type,'F')
+         fvi = numpy.empty((2*in1.nmv+2,in1.nfvd),float_type,'F')
 # fvmi = ion vdrift, vth, entropy for global distribution
-   fvmi = numpy.empty((in1.ndim,3),float_type,'F')
+         fvmi = numpy.zeros((in1.ndim,3),float_type,'F')
+# fei = global ion energy distribution functions
+         fei = numpy.empty((2*in1.nmv+2,in1.nfed),float_type,'F')
+# sfvi = ion velocity distribution functions in tile
+         sfvi = numpy.empty((2*in1.nmv+2,in1.ndim,mx1+1),float_type,'F')
+# open file for ion velocity data: updates nvirec and possibly iuvi
+         fviname = "fvi1." + cdrun
+# write filename to diagnostic metafile
+      if (sys.version_info.major==3):
+         in1.fviname = fviname.ljust(in1.fviname.dtype.itemsize)
+      else:
+         in1.fviname[:] = fviname
+      if (in1.nvirec==0):
+            mdiag1.dafopenfv1(fvmi,fvi,fei,wkt,iuvi,in1.nvirec,fviname)
+# cartesian distribution
+      if ((in1.nvft==1) or (in1.nvft==3)):
 # fvtmi = time history of ion vdrift, vth, and entropy
-   fvtmi = numpy.zeros((mtv,in1.ndim,3),float_type,'F')
-   sfvi[0,:,:] = 2.0*max(4.0*vtxi+abs(in1.vxi0),4.0*vtdxi+abs(in1.vdxi))
+         fvtmi = numpy.zeros((mtv,in1.ndim,3),float_type,'F')
+# set velocity or momentum scale
+         fvi[2*in1.nmv+1,0] = 2.0*ws
+# energy distribution
+      if ((in1.nvft==2) or (in1.nvft==3)):
+# set energy scale for ions
+         ws = ws*ws
+         fei[2*in1.nmv+1,0] = ws/(1.0 + numpy.sqrt(1.0 + ws*eci*eci))
+# create dummy arrays to avoid undefined arguments later
+   else:
+      fvi = numpy.empty((1,1),float_type,'F')
+      fei = numpy.empty((1,1),float_type,'F')
+      fvmi = numpy.zeros((1,1),float_type,'F')
+      fvtmi = numpy.zeros((1,1,1),float_type,'F')
 
 #-----------------------------------------------------------------------
-def ivelocity_diag1(pparti,kipic,fvi,fvmi,fvtmi):
+def ivelocity_diag1(fvi,fei,fvmi,fvtmi,wkt):
    """
    ion velocity diagnostic
-   input:
-   pparti = tiled ion particle arrays
-   kipic = number of ions in each tile
    input/output:
    fvi = global ion velocity distribution functions
+   fei = global ion energy distribution function
    fvmi = ion vdrift, vth, entropy for global distribution
    fvtmi = time history of ion vdrift, vth, and entropy
+   wkt = total energy contained in distribution
    """
-   mdiag1.mvpdist1(pparti,kipic,sfvi,fvmi,tdiag,npi,in1.nmv)
-   fvi[:,:] = sfvi[:,:,mx1]
+   global itv
+   if ((in1.ndv==2) or (in1.ndv==3)):
+# calculate ion cartesian distribution function and moments
+      if ((in1.nvft==1) or (in1.nvft==3)):
+         sfvi[2*in1.nmv+1,:,mx1] = fvi[2*in1.nmv+1,:]
+         mdiag1.mvpdist1(pparti,kipic,sfvi,fvmi,tdiag,npi,in1.nmv)
+         fvi[:,:] = sfvi[:,:,mx1]
 # update time step if electrons have not been calculated
-   if (in1.ndv==2):
-      s1.itv += 1
-# store time history ion vdrift, vth, and entropy
-   fvtmi[itv-1,:,:] = fvmi
+# store time history of ion vdrift, vth, and entropy
+         if (in1.ndv==2):
+            itv += 1
+         fvtmi[itv-1,:,:] = fvmi
+# ion energy distribution
+      if ((in1.nvft==2) or (in1.nvft==3)):
+         sfvi[2*in1.nmv+1,0,mx1] = fei[2*in1.nmv+1,0]
+         mdiag1.merpdist1(pparti,kipic,sfvi,eci,wkt,tdiag,in1.nmv)
+         fei[:,0] = sfvi[:,0,mx1]
+         wkt[:] = in1.rmass*wkt
+# cylindrical not supported in electrostatic code
+      if (in1.nvft < 4):
+# write ion velocity-space diagnostic output: updates nvirec
+         mdiag1.dafwritefv1(fvmi,fvi,fei,wkt,tdiag,iuvi,in1.nvirec)
 
 #-----------------------------------------------------------------------
 def del_ivelocity_diag1():
    """ delete electron velocity diagnostic """
-   global fvi, sfvi, fvmi, fvtmi
-   del fvi, sfvi, fvmi, fvtmi
+   global fvi, fei, sfvi, fvmi, fvtmi
+   if (in1.nvirec > 0):
+      in1.closeff(iuvi)
+      in1.nvirec -= 1
+   if ((in1.ndv==1) or (in1.ndv==3)):
+      del fvi, fei, fvmi
+   if ("sfvi" in globals()):
+      del sfvi
+   if ("fvtmi" in globals()):
+      del fvtmi
 
 #-----------------------------------------------------------------------
 def init_traj_diag1(ntime):
@@ -1046,75 +1224,278 @@ def init_traj_diag1(ntime):
    initialize trajectory diagnostic
    ntime = current time step
    """
-   global partt, fvtp, fvmtp, mtt, itt, partd
+   global partt, fvtp, fetp, fvmtp, mtt, itt, partd
 # set initial test trajectories
    if ((ntime+ntime0)==0):
-# iprobt = scratch array 
-      iprobt = numpy.empty((in1.nprobt),numpy.int32)
-      mdiag1.setptraj1(ppart,kpic,iprobt,in1.nst,in1.vtx,in1.vtsx,
-                       in1.dvtx,np,in1.nprobt,irc)
-      if (irc[0] != 0): exit(1)
-      if (in1.nprobt > 16777215):
-         print "nprobt overflow = ", in1.nprobt
+      if ((in1.ndt==2) and (in1.movion==0)):
+         in1.ndt = 0
+      if ((in1.ndt==1) or (in1.ndt==2)):
+         iprobt = numpy.empty((in1.nprobt),numpy.int32)
+# electron trajectories
+      if (in1.ndt==1):
+# sets electron test charge distribution: updates ppart, iprobt, nprobt
+         mdiag1.setptraj1(ppart,kpic,iprobt,in1.nst,in1.vtx,in1.vtsx,
+                          in1.dvtx,np,in1.nprobt,irc)
+                           
+         if (irc[0] != 0):
+            print ("esetptraj1 error: irc=", irc[0])
+            exit(1)
+# estimate maximum electron velocity or momentum
+         if (in1.nst==3):
+            ws = 0.0
+            if (in1.npx > 0):
+               ws = 4.0*in1.vtx+abs(in1.vx0)
+            if (in1.npxb > 0):
+               ws = max(ws,4.0*in1.vtdx+abs(in1.vdx))
+# ion trajectories
+      elif (in1.ndt==2):
+         if (in1.movion==1):
+# sets ion test charge distribution: updates ppart, iprobt, nprobt
+            mdiag1.setptraj1(pparti,kipic,iprobt,in1.nst,vtxi,in1.vtsx,
+                             in1.dvtx,npi,in1.nprobt,irc)
+            if (irc[0] != 0):
+               print ("isetptraj1 error: irc=", irc[0])
+               exit(1)
+# estimate maximum ion velocity or momentum
+            if (in1.nst==3):
+               ws = 0.0
+               if (in1.npxi > 0):
+                  ws = 4.0*vtxi+abs(in1.vxi0)
+               if (in1.npxbi > 0):
+                  ws = max(ws,4.0*vtdxi+abs(in1.vdxi))
+      if ("iprobt" in globals()):
+         del iprobt
+# find number of existing test trajectories: updates nprobt
+   else:
+      if (in1.ndt==1):
+         mdiag1.mfnptraj1(ppart,kpic,in1.nprobt,irc)
+         if (in1.nst==3):
+            ws = 0.0
+            if (in1.npx > 0):
+               ws = 4.0*in1.vtx+abs(in1.vx0)
+            if (in1.npxb > 0):
+               ws = max(ws,4.0*in1.vtdx+abs(in1.vdx))
+      elif (in1.ndt==2):
+         mdiag1.mfnptraj1(pparti,kipic,in1.nprobt,irc)
+         if (in1.nst==3):
+            ws = 0.0
+            if (in1.npxi > 0):
+               ws = 4.0*vtxi+abs(in1.vxi0)
+            if (in1.npxbi > 0):
+               ws = max(ws,4.0*vtdxi+abs(in1.vdxi))
+      if (irc[0] != 0):
+         print ("mfnptraj1 error: irc=", irc[0])
          exit(1)
-      del iprobt
-# find number of existing test tractories: updates nprobt
-   else:
-      mdiag1.mfnptraj1(ppart,kpic,in1.nprobt,irc)
-      if (irc[0] != 0): exit(1)
+# electron or ion trajectories
+   if ((in1.ndt==1) or (in1.ndt==2)) :
+      if (in1.nprobt > 16777215):
+         print ("nprobt overflow = ",in1.nprobt)
+         exit(1)
+      in1.ndimp = idimp
 # partt = particle trajectories tracked
-   partt = numpy.empty((idimp,in1.nprobt),float_type,'F')
-   if ((in1.nst==1) or (in1.nst==2)):
-      mtt = int((nloop - 1)/in1.ntt + 1); itt = 0
+      partt = numpy.empty((idimp,in1.nprobt),float_type,'F')
+      ftname = "tr1." + cdrun
+# write filename to diagnostic metafile
+      if (sys.version_info.major==3):
+         in1.ftname = ftname.ljust(in1.ftname.dtype.itemsize)
+      else:
+         in1.ftname[:] = ftname
+# track particle trajectories
+      if ((in1.nst==1) or (in1.nst==2)):
+         mtt = int((nloop - 1)/in1.ntt) + 1
+         itt = 0
 # partd = trajectory time history array
-      partd = numpy.empty((mtt,idimp,in1.nprobt),float_type,'F')
-# create dummy array to avoid undefined arguments later
-   else:
-      partd = numpy.empty((1,1,1),float_type,'F')
-   if (in1.nst==3):
-# fvtp = velocity distribution function for test particles
-      fvtp = numpy.empty((2*in1.nmv+2,in1.ndim),float_type,'F')
-# fvmtp = vdrift, vth, and entropy for test particles
-      fvmtp = numpy.empty((in1.ndim,3),float_type,'F')
-      fvtp[0,:] = 2.0*max(4.0*in1.vtx+abs(in1.vx0),
-                          4.0*in1.vtdx+abs(in1.vdx))
+         partd = numpy.zeros((mtt,idimp,in1.nprobt),float_type,'F')
+# open file for trajectory data: updates ntrec and possibly iut
+         if (in1.ntrec==0):
+            mdiag1.dafopentr1(partt,iut,in1.ntrec,ftname)
 # create dummy arrays to avoid undefined arguments later
-   else:
-      fvtp = numpy.zeros((1,1),float_type,'F')
-      fvmtp = numpy.zeros((1,1),float_type,'F')
+         fvtp = numpy.zeros((1,1),float_type,'F')
+         fvmtp = numpy.zeros((1,1),float_type,'F')
+         fetp = numpy.zeros((1,1),float_type,'F')
+# calculate test particle distribution function and moments
+      elif (in1.nst==3):
+# fvtp = velocity distribution function for test particles
+         fvtp = numpy.empty((2*in1.nmv+2,in1.ndim),float_type,'F')
+# fvmtp = vdrift, vth, and entropy for test particles
+         fvmtp = numpy.empty((in1.ndim,3),float_type,'F')
+# fetp = energy distribution function for test particles
+         fetp = numpy.empty((2*in1.nmv+2,0),float_type,'F')
+         fvtp[2*in1.nmv+1,:] = 2.0*ws
+# open file for test particle diagnostic: updates ntrec and possibly iut
+         if (in1.ntrec==0):
+            ws = 0.0
+            mdiag1.dafopenfv1(fvmtp,fvtp,fetp,ws,iut,in1.ntrec,ftname)
+# create dummy array to avoid undefined arguments later
+         partd = numpy.empty((1,1,1),float_type,'F')
 
 #-----------------------------------------------------------------------
-def traj_diag1(ppart,kpic,partd,fvtp,fvmtp):
+def traj_diag1(partd,fvtp,fvmtp):
    """
    trajectory diagnostic
-   input:
-   ppart = tiled electron particle array
-   kpic = number of electrons in each tile
    input/output:
    partd = trajectory time history array
    fvtp = velocity distribution function for test particles
    fvmtp = vdrift, vth, and entropy for test particles
    """
-# copies trajectories to array partt
-   mdiag1.mptraj1(ppart,kpic,partt,tdiag,irc)
-   if (irc[0] != 0): exit(1)
-   if ((in1.nst==1) or (in1.nst==2)):
-      global itt
-      partd[itt,:,:] = partt
-      itt += 1
-   elif (in1.nst==3):
-# calculate particle distribution function and moments
-      mdiag1.mvdist1(partt,fvtp,fvmtp,tdiag,in1.nprobt,in1.nmv)
+   global partt, fetp
+# copies tagged electron coordinates to array partt
+   if (in1.ndt==1):
+      mdiag1.mptraj1(ppart,kpic,partt,tdiag,irc)
+# copies tagged ion coordinatess to array partti
+   elif (in1.ndt==2) :
+      if (in1.movion==1):
+         mdiag1.mptraj1(pparti,kipic,partt,tdiag,irc)
+   if (irc[0] != 0):
+      exit(1)
+# electron or ion trajectories
+   if ((in1.ndt==1) or (in1.ndt==2)):
+# store particle trajectories
+      if ((in1.nst==1) or (in1.nst==2)):
+# write trajectory diagnostic output: updates ntrec
+         mdiag1.dafwritetr1(partt,tdiag,iut,in1.ntrec)
+         global itt
+         partd[itt,:,:] = partt
+         itt += 1
+# calculate test particle distribution function and moments
+      elif (in1.nst==3):
+# calculate test particle distribution function and moments
+         mdiag1.mvdist1(partt,fvtp,fvmtp,tdiag,in1.nprobt,in1.nmv)
+# write test particle diagnostic output: updates ntrec
+         ws = 0.0
+         mdiag1.dafwritefv1(fvmtp,fvtp,fetp,ws,tdiag,iut,in1.ntrec)
 
 #-----------------------------------------------------------------------
 def del_traj_diag1():
    """ delete trajectory diagnostic """
-   global partt, partd, fvtp, fvmtp
-   del partt
+   global partt, partd, fvtp, fetp, fvmtp
+   if (in1.ntrec > 0):
+      in1.closeff(iut)
+      in1.ntrec -= 1
+   if ("partt" in globals()):
+      del partt
    if ((in1.nst==1) or (in1.nst==2)):
       del partd
    elif (in1.nst==3):
-      del fvtp, fvmtp
+      del fvtp, fetp, fvmtp
+
+#-----------------------------------------------------------------------
+def init_ephasesp_diag1():
+   """ initialize electron phase space diagnostic """
+   global fvs, iuse
+   nmv21 = 2*in1.nmv + 1
+   in1.mvx = min(in1.mvx,nx)
+   in1.nsxb = int((nx - 1)/in1.mvx + 1)
+# electron phase space diagnostic
+   if ((in1.nds==1) or (in1.nds==3)):
+# estimate maximum electron velocity or momentum
+      ws = 0.0
+      if (in1.npx > 0):
+         ws = 4.0*in1.vtx+abs(in1.vx0)
+      if (in1.npxb > 0):
+         ws = max(ws,4.0*in1.vtdx+abs(in1.vdx))
+# fvs = global electron phase space distribution function
+      fvs = numpy.zeros((nmv21+1,in1.ndim,in1.nsxb),float_type,'F')
+      fvs[nmv21,:,0] = 1.25*ws
+# open file for electron phase space data:
+# updates nserec and possibly iuse
+# opens a new fortran unformatted stream file
+      if (in1.nserec==0):
+         fsename = "pse1." + cdrun
+# write filename to diagnostic metafile
+         if (sys.version_info.major==3):
+            in1.fsename = fsename.ljust(in1.fsename.dtype.itemsize)
+         else:
+            in1.fsename[:] = fsename
+         iuse = mdiag1.get_funit(iuse)
+         mdiag1.fnopens1(iuse,fsename)
+         in1.nserec = 1
+
+#-----------------------------------------------------------------------
+def ephasesp_diag1(fvs):
+   """
+   electron phase space diagnostic
+   input/output: 
+   fvs = global electron phase space distribution function
+   """
+# electron phase space diagnostic
+   if ((in1.nds==1) or (in1.nds==3)):
+# calculates velocity distribution in different regions of space:
+# updates fvs
+      mdiag1.mvspdist1(ppart,kpic,fvs,tdiag,in1.nmv,in1.mvx)
+# write phase space diagnostic output: updates nserec
+      if (in1.nserec > 0):
+         mdiag1.mwrfvsdata1(fvs,tdiag,iuse)
+         in1.nserec += 1
+
+#-----------------------------------------------------------------------
+def del_ephasesp_diag1():
+   """ delete electron phase space diagnostic """
+   global fvs
+   if (in1.nserec > 0):
+      in1.closeff(iuse)
+      in1.nserec -= 1
+   if ("fvs" in globals()):
+      del fvs
+
+#-----------------------------------------------------------------------
+def init_iphasesp_diag1():
+   """ initialize ion phase space diagnostic """
+   global fvsi, iusi
+   nmv21 = 2*in1.nmv + 1
+   in1.mvx = min(in1.mvx,nx)
+   in1.nsxb = int((nx - 1)/in1.mvx + 1)
+# ion phase space diagnostic
+   if ((in1.nds==2) or (in1.nds==3)):
+# estimate maximum ion velocity or momentum
+      ws = 0.0
+      if (in1.npxi > 0):
+         ws = 4.0*vtxi+abs(in1.vxi0)
+      if (in1.npxbi > 0):
+         ws = max(ws,4.0*vtdxi+abs(in1.vdxi))
+# fvsi = global ion phase space distribution function
+      fvsi = numpy.zeros((nmv21+1,in1.ndim,in1.nsxb),float_type,'F')
+      fvsi[nmv21,:,0] = 1.25*ws
+# open file for ion phase space data:
+# updates nsirec and possibly iusi
+# opens a new fortran unformatted stream file
+      if (in1.nsirec==0):
+         fsiname = "psi1." + cdrun
+# write filename to diagnostic metafile
+         if (sys.version_info.major==3):
+            in1.fsiname = fsiname.ljust(in1.fsiname.dtype.itemsize)
+         else:
+            in1.fsiname[:] = fsiname
+         iusi = mdiag1.get_funit(iusi)
+         mdiag1.fnopens1(iusi,fsiname)
+         in1.nsirec = 1
+
+#-----------------------------------------------------------------------
+def iphasesp_diag1(fvsi):
+   """
+   ion phase space diagnostic
+   input/output: 
+   fvsi = global ion phase space distribution function
+   """
+# ion phase space diagnostic
+   if ((in1.nds==2) or (in1.nds==3)):
+# calculates velocity distribution in different regions of space:
+# updates fvsi
+      mdiag1.mvspdist1(pparti,kipic,fvsi,tdiag,in1.nmv,in1.mvx)
+# write phase space diagnostic output: updates nsirec
+      if (in1.nsirec > 0):
+         mdiag1.mwrfvsdata1(fvsi,tdiag,iusi)
+         in1.nsirec += 1
+
+#-----------------------------------------------------------------------
+def del_iphasesp_diag1():
+   """ delete ion phase space diagnostic """
+   global fvsi
+   if (in1.nsirec > 0):
+      in1.closeff(iusi)
+      in1.nsirec -=  1
+   if ("fvsi" in globals()):
+      del fvsi
 
 #-----------------------------------------------------------------------
 def print_timings1(tinit,tloop,iuot):
@@ -1125,30 +1506,30 @@ def print_timings1(tinit,tloop,iuot):
    tloop = loop elapsed time
    iuot = output file descriptor
    """
-   print >> iuot
-   print >> iuot, "initialization time = ", tinit
-   print >> iuot, "deposit time = ", tdpost[0]
-   print >> iuot, "guard time = ", tguard[0]
-   print >> iuot, "solver time = ", tfield[0]
-   print >> iuot, "fft time = ", tfft[0]
-   print >> iuot, "push time = ", tpush[0]
-   print >> iuot, "sort time = ", tsort[0]
+   print (file=iuot)
+   print ("initialization time = ",tinit,file=iuot)
+   print ("deposit time = ",tdpost[0],file=iuot)
+   print ("guard time = ",tguard[0],file=iuot)
+   print ("solver time = ",tfield[0],file=iuot)
+   print ("fft time = ",tfft[0],file=iuot)
+   print ("push time = ",tpush[0],file=iuot)
+   print ("sort time = ",tsort[0],file=iuot)
    tfield[0] += tguard[0] + tfft[0]
-   print >> iuot, "total solver time = ", tfield[0]
+   print ("total solver time = ",tfield[0],file=iuot)
    time = tdpost[0] + tpush[0] + tsort[0]
-   print >> iuot, "total particle time = ", time
-   print >> iuot, "total diagnostic time = ", tdiag[0]
+   print ("total particle time = ",time,file=iuot)
+   print ("total diagnostic time = ",tdiag[0],file=iuot)
    ws[0] = time + tfield[0] + tdiag[0]
    tloop = tloop - ws[0]
-   print >> iuot, "total and additional time = ", ws[0], ",", tloop
-   print >> iuot
+   print ("total and additional time = ",ws[0],",",tloop,file=iuot)
+   print (file=iuot)
 # summarize particle timings
    ws[0] = 1.0e+09/(float(nloop)*float(np+npi))
-   print >> iuot, "Push Time (nsec) = ", tpush[0]*ws[0]
-   print >> iuot, "Deposit Time (nsec) = ", tdpost[0]*ws[0]
-   print >> iuot, "Sort Time (nsec) = ", tsort[0]*ws[0]
-   print >> iuot, "Total Particle Time (nsec) = ", time*ws[0]
-   print >> iuot
+   print ("Push Time (nsec) = ",tpush[0]*ws[0],file=iuot)
+   print ("Deposit Time (nsec) = ",tdpost[0]*ws[0],file=iuot)
+   print ("Sort Time (nsec) = ",tsort[0]*ws[0],file=iuot)
+   print ("Total Particle Time (nsec) = ",time*ws[0],file=iuot)
+   print (file=iuot)
 
 #-----------------------------------------------------------------------
 def reset_diags1():
@@ -1183,14 +1564,28 @@ def reset_diags1():
          if (in1.nfirec > 0):
              in1.nfirec = 1
    if (in1.ntv > 0):
+      if (in1.nverec > 1):
+         in1.nverec = 1
       itv = 0
       if ("fvtm" in globals()):
          fvtm.fill(0.0)
       if (in1.movion==1):
+         if (in1.nvirec > 1):
+            in1.nvirec = 1
          if ("fvtmi" in globals()):
             fvtmi.fill(0.0)
    if (in1.ntt > 0):
+      if (in1.ntrec > 1):
+         in1.ntrec = 1
       itt = 0
+      if ("partd" in globals()):
+         partd.fill(0.0)
+   if (in1.nts > 0):
+      if (in1.nserec > 1):
+         in1.nserec = 1
+      if (in1.movion==1):
+         if (in1.nsirec > 1):
+            in1.nsirec = 1
 
 #-----------------------------------------------------------------------
 def close_diags1(iudm):
@@ -1216,6 +1611,19 @@ def close_diags1(iudm):
 # ions
       if (in1.movion==1):
          del_ifluidms_diag1()
+# velocity diagnostic
+   if (in1.ntv > 0):
+      del_evelocity_diag1()
+      if (in1.movion==1):
+         del_ivelocity_diag1()
+# trajectory diagnostic
+   if (in1.ntt > 0):
+      del_traj_diag1()
+# phase space diagnostic
+   if (in1.nts > 0):
+      del_ephasesp_diag1()
+      if (in1.movion==1):
+         del_iphasesp_diag1()
 # ion density diagnostic
    if (in1.movion==1):
       if (in1.ntdi > 0):
@@ -1234,12 +1642,6 @@ def close_diags1(iudm):
       del_spectrum1()
    if (in1.ntw > 0):
       del_energy_diag1()
-   if (in1.ntv > 0):
-      del_evelocity_diag1()
-      if (in1.movion==1):
-         del_ivelocity_diag1()
-   if (in1.ntt > 0):
-      del_traj_diag1()
 
 #-----------------------------------------------------------------------
 def initialize_diagnostics1(ntime):
@@ -1294,14 +1696,22 @@ def initialize_diagnostics1(ntime):
    if (in1.ntt > 0):
       init_traj_diag1(ntime)
 
+# initialize phase space diagnostic:
+   if (in1.nts > 0):
+# electrons: allocates fvs
+      init_ephasesp_diag1()
+# ions: allocates fvsi
+      if (in1.movion==1):
+         init_iphasesp_diag1()
+
 #-----------------------------------------------------------------------
 def open_restart1():
    """ open reset and restart files """
 # iur, iurr = restart, reset, old restart file descriptors
    global iur, iurr, iur0, i1, i2, i3, i4, a2, fname
 # reset file
-   fname = "reset1"
-   iurr = open(fname,"wb+")
+#  fname = "reset1"
+#  iurr = open(fname,"wb+")
 # restart file
    fname = "rstrt1." + cdrun
 # start a new run from random numbers
@@ -1320,7 +1730,7 @@ def open_restart1():
          fname = "rstrt1." + cdrun0
          iur0 = open(fname,"rb+")
       else:
-         print "restart warning: old, new idruns identical"
+         print ("restart warning: old, new idruns identical")
 # allocate scratch numpy arrays
    i1 = numpy.zeros((1),int_type)
    i2 = numpy.zeros((2),int_type)
@@ -1354,7 +1764,7 @@ def bwrite_restart1(iur,ntime):
       part.tofile(iur)
 # write out if ions are moving
    i1[0] = in1.movion; i1.tofile(iur)
-   if (in1.movion==1):
+   if (in1.movion > 0):
 # copy ordered particles to linear array: updates part, npp
       mpush1.mpcopyout1(part,pparti,kipic,i1,irc)
       npp = i1[0]
@@ -1392,17 +1802,17 @@ def bread_restart1(iur):
    i2[:] = numpy.fromfile(iur,int_type,2)
    ntime = i2[0]; ntime0 = i2[1]
    if (in1.nustrt==0):
-      print "restarting from ntime, idrun0 = ", ntime, in1.idrun0
+      print ("restarting from ntime, idrun0 = ",ntime,in1.idrun0)
    else:
-      print "restarting from ntime, = ", ntime
+      print ("restarting from ntime = ",ntime)
 # read in size of electron array
    i2[:] = numpy.fromfile(iur,int_type,2)
    npp = i2[0]; ndimp = i2[1]
    if (ndimp != numpy.size(part,0)):
-      print "restart error, idimp=", ndimp, numpy.size(part,0)
+      print ("restart error, idimp=",ndimp,numpy.size(part,0))
       exit(1)
    if (npp != np):
-      print "restart warning: new np/old np=", npp, np
+      print ("restart warning: new np/old np=",npp,np)
       exit(1)
 # read in electrons, if non-zero
    if (npp > 0):
@@ -1436,7 +1846,7 @@ def bread_restart1(iur):
 # read in to determine if ions are moving
    i1[:] = numpy.fromfile(iur,int_type,1); it = i1[0]
    if (it != in1.movion):
-      print "movion restart error, movion = ", it, in1.movion
+      print ("movion restart error, movion = ",it,in1.movion)
       exit(1)
 # ions are moving
    if (i1[0]==1):
@@ -1444,10 +1854,10 @@ def bread_restart1(iur):
       i2[:] = numpy.fromfile(iur,int_type,2)
       npp = i2[0]; ndimp = i2[1]
       if (ndimp != numpy.size(part,0)):
-         print "ion restart error, idimp=",ndimp,numpy.size(part,0)
+         print ("ion restart error, idimp=",ndimp,numpy.size(part,0))
          exit(1)
       if (npp != npi):
-         print "restart warning: new npi/old npi=", npp, npi
+         print ("restart warning: new npi/old npi=",npp,npi)
          npi = npp
 # read in ions, if non-zero
       if (npi > 0):
@@ -1471,14 +1881,14 @@ def bread_restart1(iur):
    else:
       i1[:] = numpy.fromfile(iur,int_type,1); it = i1[0]
       if (it > numpy.size(qi)):
-         print "qi restart error, size(qi)=",it,numpy.size(qi)
+         print ("qi restart error, size(qi)=",it,numpy.size(qi))
          exit(1)
       if (it > 0):
          qi[:] = numpy.fromfile(iur,float_type,it)
 # read in electric field parameter
    i1[:] = numpy.fromfile(iur,int_type,1); it = i1[0]
    if (it != in1.emf):
-      print "warning: emf values differ, emf=",it,in1.emf
+      print ("warning: emf values differ, emf=",it,in1.emf)
    ntime0 += ntime
 
 #-----------------------------------------------------------------------
@@ -1510,7 +1920,10 @@ def dwrite_restart1(iur):
          it = mdiag1.fnrecl(in1.fdename)
          i1[0] = it; i1.tofile(iur)
          if (it > 0):
-            fname[:] = ''.join(in1.fdename)
+            if (sys.version_info.major==3):
+               fname = in1.fdename
+            else:
+               fname[:] = ''.join(in1.fdename)
             fname.tofile(iur)
 
 # write out potential diagnostic parameter
@@ -1523,7 +1936,10 @@ def dwrite_restart1(iur):
          it = mdiag1.fnrecl(in1.fpname)
          i1[0] = it; i1.tofile(iur)
          if (it > 0):
-            fname[:] = ''.join(in1.fpname)
+            if (sys.version_info.major==3):
+               fname = in1.fpname
+            else:
+               fname[:] = ''.join(in1.fpname)
             fname.tofile(iur)
 # write out spectrum flag
       if ((in1.ndp==2) or (in1.ndp==3)):
@@ -1548,11 +1964,14 @@ def dwrite_restart1(iur):
          it = mdiag1.fnrecl(in1.felname)
          i1[0] = it; i1.tofile(iur)
          if (it > 0):
-            fname[:] = ''.join(in1.felname)
+            if (sys.version_info.major==3):
+               fname = in1.felname
+            else:
+               fname[:] = ''.join(in1.felname)
             fname.tofile(iur)
 
 # write out ion density diagnostic parameter
-   if (in1.movion==1):
+   if (in1.movion > 0):
       i1[0] = in1.ntdi; i1.tofile(iur)
 # write out record location
       if (in1.ntdi > 0):
@@ -1562,7 +1981,10 @@ def dwrite_restart1(iur):
             it = mdiag1.fnrecl(in1.fdiname)
             i1[0] = it; i1.tofile(iur)
             if (it > 0):
-               fname[:] = ''.join(in1.fdiname)
+               if (sys.version_info.major==3):
+                  fname = in1.fdiname
+               else:
+                  fname[:] = ''.join(in1.fdiname)
                fname.tofile(iur)
 # write out spectrum flag
          if ((in1.nddi==2) or (in1.nddi==3)):
@@ -1587,9 +2009,12 @@ def dwrite_restart1(iur):
          it = mdiag1.fnrecl(in1.ffename)
          i1[0] = it; i1.tofile(iur)
          if (it > 0):
-            fname[:] = ''.join(in1.ffename)
+            if (sys.version_info.major==3):
+               fname = in1.ffename
+            else:
+               fname[:] = ''.join(in1.ffename)
             fname.tofile(iur)
-      if (in1.movion==1):
+      if (in1.movion > 0):
 # write out ion record location
          i1[0] = in1.nfirec; i1.tofile(iur)
 # write out record length (zero if error) and file name (if no error)
@@ -1597,39 +2022,112 @@ def dwrite_restart1(iur):
             it = mdiag1.fnrecl(in1.ffiname)
             i1[0] = it; i1.tofile(iur)
             if (it > 0):
-               fname[:] = ''.join(in1.ffiname)
+               if (sys.version_info.major==3):
+                  fname = in1.ffiname
+               else:
+                  fname[:] = ''.join(in1.ffiname)
                fname.tofile(iur)
 
 # write out velocity diagnostic parameter
    i1[0] = in1.ntv; i1.tofile(iur)
    if (in1.ntv > 0):
-      i1[0] = itv; i1.tofile(iur)
-# write out time history array sizes and data
+# write out electron record location
+      i1[0] = in1.nverec; i1.tofile(iur)
+# write out record length (zero if error) and file name (if no error)
+      if (in1.nverec > 0):
+         it = mdiag1.fnrecl(in1.fvename)
+         i1[0] = it; i1.tofile(iur)
+         if (it > 0):
+            if (sys.version_info.major==3):
+               fname = in1.fvename
+            else:
+               fname[:] = ''.join(in1.fvename)
+            fname.tofile(iur)
+      i2[0] = itv; i2[1] = in1.ndv; i2.tofile(iur)
+# write out electron time history array sizes and data
       if (itv > 0):
-         i3[0] = numpy.size(fvtm,0); i3[1] = numpy.size(fvtm,1)
-         i3[2] = numpy.size(fvtm,2)
-         i3.tofile(iur)
-         fvtm[0:itv,:].tofile(iur)
-         if (in1.movion==1):
-            i3[0] = numpy.size(fvtmi,0); i3[1] = numpy.size(fvtmi,1)
-            i3[2] = numpy.size(fvtmi,2)
+         if ((in1.ndv==1) or (in1.ndv==3)):
+            i3[0] = numpy.size(fvtm,0); i3[1] = numpy.size(fvtm,1)
+            i3[2] = numpy.size(fvtm,2)
             i3.tofile(iur)
-            fvtmi[0:itv,:].tofile(iur)
+            fvtm[0:itv,:].tofile(iur)
+      if (in1.movion > 0):
+# write out ion record location
+         i1[0] = in1.nvirec; i1.tofile(iur)
+# write out record length (zero if error) and file name (if no error)
+         if (in1.nvirec > 0):
+            it = mdiag1.fnrecl(in1.fviname)
+            i1[0] = it; i1.tofile(iur)
+            if (it > 0):
+               if (sys.version_info.major==3):
+                  fname = in1.fviname
+               else:
+                  fname[:] = ''.join(in1.fviname)
+               fname.tofile(iur)
+# write out ion time history array sizes and data
+         if (itv > 0):
+            if ((in1.ndv==2) or (in1.ndv==3)):
+               i3[0] = numpy.size(fvtmi,0); 
+               i3[1] = numpy.size(fvtmi,1)
+               i3[2] = numpy.size(fvtmi,2)
+               i3.tofile(iur)
+               fvtmi[0:itv,:].tofile(iur)
 
 # write out trajectory diagnostic parameter
    i1[0] = in1.ntt; i1.tofile(iur)
    if (in1.ntt > 0):
-      if ((in1.nst==1) or (in1.nst==2)):
-         i1[0] = itt; i1.tofile(iur)
+# electron or ion trajectories
+      if ((in1.ndt==1) or (in1.ndt==2)):
+# write out trajectory record location
+         i1[0] = in1.ntrec; i1.tofile(iur)
+# write out record length (zero if error) and file name (if no error)
+         if (in1.ntrec > 0):
+            it = mdiag1.fnrecl(in1.ftname)
+            i1[0] = it; i1.tofile(iur)
+            if (it > 0):
+               if (sys.version_info.major==3):
+                  fname = in1.ftname
+               else:
+                  fname[:] = ''.join(in1.ftname)
+               fname.tofile(iur)
+# store particle trajectories
+         if ((in1.nst==1) or (in1.nst==2)):
+            i1[0] = itt; i1.tofile(iur)
 # write out time history sizes and data
-         if (itt > 0):
-            i3[0] = numpy.size(partd,0); i3[1] = numpy.size(partd,1)
-            i3[2] = numpy.size(partd,2)
-            i3.tofile(iur)
-            partd[0:itt,:,:].tofile(iur)
-      else:
-         it = 0
+            if (itt > 0):
+               i3[0] = numpy.size(partd,0); i3[1] = numpy.size(partd,1)
+               i3[2] = numpy.size(partd,2)
+               i3.tofile(iur)
+               partd[0:itt,:,:].tofile(iur)
+
+# write out phase space diagnostic parameter
+   i1[0] = in1.nts; i1.tofile(iur)
+   if (in1.nts > 0):
+# write out electron phase space record location
+      i1[0] = in1.nserec; i1.tofile(iur)
+# write out record length (zero if error) and file name (if no error)
+      if (in1.nserec > 0):
+         it = numpy.size(fvs)
          i1[0] = it; i1.tofile(iur)
+         if (it > 0):
+            if (sys.version_info.major==3):
+               fname = in1.fsename
+            else:
+               fname[:] = ''.join(in1.fsename)
+            fname.tofile(iur)
+      if (in1.movion > 0):
+# write out ion phase space record location
+         i1[0] = in1.nsirec; i1.tofile(iur)
+# write out record length (zero if error) and file name (if no error)
+         if (in1.nsirec > 0):
+            it = numpy.size(fvsi)
+            i1[0] = it; i1.tofile(iur)
+            if (it > 0):
+               if (sys.version_info.major==3):
+                  fname = in1.fsiname
+               else:
+                  fname[:] = ''.join(in1.fsiname)
+               fname.tofile(iur)
 
 #-----------------------------------------------------------------------
 def dread_restart1(iur):
@@ -1638,11 +2136,11 @@ def dread_restart1(iur):
    input:
    iur = restart file descriptor
    """
-   global i1, i2, i3, fname, itw, itp, itv, itt, itdi
+   global nd, i1, i2, i3, fname, itw, itp, itv, itt, itdi
 # read in energy diagnostic parameter
    i1[:] = numpy.fromfile(iur,int_type,1); it = i1[0]
    if (it != in1.ntw):
-      print "restart error: read/expected ntw=", it, in1.ntw
+      print ("restart error: read/expected ntw=",it,in1.ntw)
       exit(1)
    if (in1.ntw > 0):
       i1[:] = numpy.fromfile(iur,int_type,1); itw = i1[0]
@@ -1651,10 +2149,10 @@ def dread_restart1(iur):
          i2[:] = numpy.fromfile(iur,int_type,2)
          iq = i2[0]; it = i2[1]
          if (iq != mtw):
-            print "restart error: read/expected mtw=", iq, mtw
+            print ("restart error: read/expected mtw=",iq,mtw)
             exit(1)
          if (it > numpy.size(wt,1)):
-            print "wt size error read/expected=", it, numpy.size(wt,1)
+            print ("wt size error read/expected=",it,numpy.size(wt,1))
             exit(1)
          il = itw*it
          wt[0:itw,:] = numpy.fromfile(iur,float_type,il).reshape(itw,it)
@@ -1665,7 +2163,7 @@ def dread_restart1(iur):
             s[1] = wt[0,1]
             s[2] = wt[0,3]
             s[3] = s[2]
-            for it in xrange(1,itw):
+            for it in range(1,itw):
                s[0] += wt[it,0]
                s[1] += wt[it,1]
                s[2] = min(s[2],wt[it,3])
@@ -1674,24 +2172,27 @@ def dread_restart1(iur):
 # read in electron density diagnostic parameter
    i1[:] = numpy.fromfile(iur,int_type,1); it = i1[0]
    if (it != in1.ntde):
-      print "restart error: read/expected ntde=", it, in1.ntde
+      print ("restart error: read/expected ntde=",it,in1.ntde)
       exit(1)
 # read in record location
    if (in1.ntde > 0):
       i1[:] = numpy.fromfile(iur,int_type,1); in1.nderec = i1[0]
 # read in record length (zero if error) and file name (if no error)
       if (in1.nderec > 0):
-        i1[:] = numpy.fromfile(iur,int_type,1); it = i1[0]
-        if (it==0):
-           print "ntde zero length record error"
-           exit(1)
-        fname[:] = numpy.fromfile(iur,'S32',1)
-        in1.fdename[:] = str(fname[0])
+         i1[:] = numpy.fromfile(iur,int_type,1); it = i1[0]
+         if (it==0):
+            print ("ntde zero length record error")
+            exit(1)
+         if (sys.version_info.major==3):
+            in1.fdename = numpy.fromfile(iur,'S1',32)
+         else:
+            fname[:] = numpy.fromfile(iur,'S32',1)
+            in1.fdename[:] = str(fname[0])
 
 # read in potential diagnostic parameter
    i1[:] = numpy.fromfile(iur,int_type,1); it = i1[0]
    if (it != in1.ntp):
-      print "restart error: read/expected ntp=", it, in1.ntp
+      print ("restart error: read/expected ntp=",it,in1.ntp)
       exit(1)
 # read in record location
    if (in1.ntp > 0):
@@ -1700,10 +2201,13 @@ def dread_restart1(iur):
       if (in1.nprec > 0):
          i1[:] = numpy.fromfile(iur,int_type,1); it = i1[0]
          if (it==0):
-            print "ntp zero length record error"
+            print ("ntp zero length record error")
             exit(1)
-         fname[:] = numpy.fromfile(iur,'S32',1)
-         in1.fpname[:] = str(fname[0])
+         if (sys.version_info.major==3):
+            in1.fpname = numpy.fromfile(iur,'S1',32)
+         else:
+            fname[:] = numpy.fromfile(iur,'S32',1)
+            in1.fpname[:] = str(fname[0])
 # read in spectrum flag
       i1[:] = numpy.fromfile(iur,int_type,1); itp = i1[0]
 # read in spectrum sizes and data
@@ -1711,14 +2215,14 @@ def dread_restart1(iur):
          i3[:] = numpy.fromfile(iur,int_type,3)
          ir = i3[0]; it = i3[1]; iq = i3[2]
          if (ir != 4):
-            print "pks size error: read/expected 4 =", ir
+            print ("pks size error: read/expected 4 =",ir)
             exit(1)
          if (it != in1.modesxp):
-            print ("pks size error: read/expected modesxp=", it,
+            print ("pks size error: read/expected modesxp=",it,
                     in1.modesxp)
             exit(1)
          if (iq != iw):
-            print "pks size error: read/expected iw=", iq, iw
+            print ("pks size error: read/expected iw=",iq,iw)
             exit(1)
          il = ir*it*iq
          pks[:,:,:] = numpy.fromfile(iur,double_type,il).reshape(4,it,iq)
@@ -1726,25 +2230,28 @@ def dread_restart1(iur):
 # read in longitudinal efield diagnostic parameter
    i1[:] = numpy.fromfile(iur,int_type,1); it = i1[0]
    if (it != in1.ntel):
-      print "restart error: read/expected ntel=", it, in1.ntel
+      print ("restart error: read/expected ntel=",it,in1.ntel)
       exit(1)
 # read in record location
    if (in1.ntel > 0):
       i1[:] = numpy.fromfile(iur,int_type,1); in1.nelrec = i1[0]
 # read in record length (zero if error) and file name (if no error)
       if (in1.nelrec > 0):
-        i1[:] = numpy.fromfile(iur,int_type,1); it = i1[0]
-        if (it==0):
-           print "ntel zero length record error"
-           exit(1)
-        fname[:] = numpy.fromfile(iur,'S32',1)
-        in1.felname[:] = str(fname[0])
+         i1[:] = numpy.fromfile(iur,int_type,1); it = i1[0]
+         if (it==0):
+            print ("ntel zero length record error")
+            exit(1)
+         if (sys.version_info.major==3):
+            in1.felname = numpy.fromfile(iur,'S1',32)
+         else:
+            fname[:] = numpy.fromfile(iur,'S32',1)
+            in1.felname[:] = str(fname[0])
 
 # read in ion density diagnostic parameter
-   if (in1.movion==1):
+   if (in1.movion > 0):
       i1[:] = numpy.fromfile(iur,int_type,1); it = i1[0]
       if (it != in1.ntdi):
-         print "restart error: read/expected ntdi=", it, in1.ntdi
+         print ("restart error: read/expected ntdi=",it,in1.ntdi0)
          exit(1)
 # read in record location
       if (in1.ntdi > 0):
@@ -1753,10 +2260,13 @@ def dread_restart1(iur):
          if (in1.ndirec > 0):
             i1[:] = numpy.fromfile(iur,int_type,1); it = i1[0]
             if (it==0):
-               print "ntdi zero length record error"
+               print ("ntdi zero length record error")
                exit(1)
-            fname[:] = numpy.fromfile(iur,'S32',1)
-            in1.fdiname[:] = str(fname[0])
+            if (sys.version_info.major==3):
+               in1.fdiname = numpy.fromfile(iur,'S1',32)
+            else:
+               fname[:] = numpy.fromfile(iur,'S32',1)
+               in1.fdiname[:] = str(fname[0])
 # read in spectrum flag
          i1[:] = numpy.fromfile(iur,int_type,1); itdi = i1[0]
 # read in spectrum sizes and data
@@ -1764,14 +2274,14 @@ def dread_restart1(iur):
             i3[:] = numpy.fromfile(iur,int_type,3)
             ir = i3[0]; it = i3[1]; iq = i3[2]
             if (ir != 4):
-               print "pksdi size error: read/expected 4 =", ir
+               print ("pksdi size error: read/expected 4 =",ir)
                exit(1)
             if (it != in1.modesxdi):
-               print ("pksdi size error: read/expected modesxdi=", it,
+               print ("pksdi size error: read/expected modesxdi=",it,
                        in1.modesxdi)
                exit(1)
             if (iq != iwi):
-               print "pksdi size error: read/expected iwi=",iq,iwi
+               print ("pksdi size error: read/expected iwi=",iq,iwi)
                exit(1)
             il = ir*it*iq
             pksdi[:,:,:] = (numpy.fromfile(iur,double_type,il).
@@ -1780,9 +2290,8 @@ def dread_restart1(iur):
 # read in fluid moments diagnostic parameter
    i1[:] = numpy.fromfile(iur,int_type,1); it = i1[0]
    if (it != in1.ntfm):
-      print "restart error: read/expected ntfm=", it, in1.ntfm
+      print ("restart error: read/expected ntfm=",it,in1.ntfm)
       exit(1)
-# read in electron data
    if (in1.ntfm > 0):
 # read in electron record location
       i1[:] = numpy.fromfile(iur,int_type,1); in1.nferec = i1[0]
@@ -1790,95 +2299,188 @@ def dread_restart1(iur):
       if (in1.nferec > 0):
          i1[:] = numpy.fromfile(iur,int_type,1); it = i1[0]
          if (it==0):
-            print "ntfm zero length record error"
+            print ("ntfm zero length record error")
             exit(1)
-         fname[:] = numpy.fromfile(iur,'S32',1)
-         in1.ffename[:] = str(fname[0])
+         if (sys.version_info.major==3):
+            in1.ffename = numpy.fromfile(iur,'S1',32)
+         else:
+            fname[:] = numpy.fromfile(iur,'S32',1)
+            in1.ffename[:] = str(fname[0])
 # read in ion data
-      if (in1.movion==1):
+      if (in1.movion > 0):
 # read in ion record location
          i1[:] = numpy.fromfile(iur,int_type,1); in1.nfirec = i1[0]
 # read in ion record length (zero if error) and file name (if no error)
          if (in1.nfirec > 0):
             i1[:] = numpy.fromfile(iur,int_type,1); it = i1[0]
             if (it==0):
-               print "ntfm zero length ion record error"
+               print ("ntfm zero length ion record error")
                exit(1)
-            fname[:] = numpy.fromfile(iur,'S32',1)
-            in1.ffiname[:] = str(fname[0])
+            if (sys.version_info.major==3):
+               in1.ffiname = numpy.fromfile(iur,'S1',32)
+            else:
+               fname[:] = numpy.fromfile(iur,'S32',1)
+               in1.ffiname[:] = str(fname[0])
 
 # read in velocity diagnostic parameter
    i1[:] = numpy.fromfile(iur,int_type,1); it = i1[0]
    if (it != in1.ntv):
-      print "restart error: read/expected ntv=", it, in1.ntv
+      print ("restart error: read/expected ntv=",it,in1.ntv)
       exit(1)
    if (in1.ntv > 0):
-      i1[:] = numpy.fromfile(iur,int_type,1); itv = i1[0]
-# read in time history array sizes and data
+# read in electron record location
+      i1[:] = numpy.fromfile(iur,int_type,1); in1.nverec = i1[0]
+# read in record length (zero if error) and file name (if no error)
+      if (in1.nverec > 0):
+         i1[:] = numpy.fromfile(iur,int_type,1); it = i1[0]
+         if (it==0):
+            print ("ntv zero length record error")
+            exit(1)
+         if (sys.version_info.major==3):
+            in1.fvename = numpy.fromfile(iur,'S1',32)
+         else:
+            fname[:] = numpy.fromfile(iur,'S32',1)
+            in1.fvename[:] = str(fname[0])
+      i2[:] = numpy.fromfile(iur,int_type,2); itv = i2[0]; nd = i2[1]
+# read in electron time history array sizes and data
       if (itv > 0):
-         i3[:] = numpy.fromfile(iur,int_type,3)
-         iq = i3[0]; it = i3[1]; ir = i3[2]
-         if (iq != mtv):
-            print "restart error: read/expected mtv=", iq, mtv
-            exit(1)
-         if (it != in1.ndim):
-            print "fvtm size error read/expected ndim=", it, in1.ndim
-            exit(1)
-         if (ir != 3):
-            print "fvtm size error read/expected 3=", ir
-            exit(1)
-         il = itv*it*ir
-         fvtm[0:itv,:,:] = (numpy.fromfile(iur,float_type,il).
-                            reshape(itv,it,3))
-         if (in1.movion==1):
+         if ((nd==1) or (nd==3)):
             i3[:] = numpy.fromfile(iur,int_type,3)
             iq = i3[0]; it = i3[1]; ir = i3[2]
             if (iq != mtv):
-               print "ion restart error: read/expected mtv=", iq, mtv
+               print ("restart error: read/expected mtv=",iq,mtv)
                exit(1)
             if (it != in1.ndim):
-               print "fvtmi size error read/expected ndim=",it, in1.ndim
+               print ("fvtm size error read/expected ndim=",it,in1.ndim)
                exit(1)
             if (ir != 3):
-               print "fvtmi size error read/expected 3=", ir
+               print ("fvtm size error read/expected 3=",ir)
                exit(1)
             il = itv*it*ir
-            fvtmi[0:itv,:,:] = (numpy.fromfile(iur,float_type,il).
-                                reshape(itv,it,3))
+            fvtm[0:itv,:,:] = (numpy.fromfile(iur,float_type,il).
+                               reshape(itv,it,3))
+      if (in1.movion > 0):
+# read in ion record location
+         i1[:] = numpy.fromfile(iur,int_type,1); in1.nvirec = i1[0]
+# read in record length (zero if error) and file name (if no error)
+         if (in1.nvirec > 0):
+            i1[:] = numpy.fromfile(iur,int_type,1); it = i1[0]
+            if (it==0):
+               print ("ntv zion ero length record error")
+               exit(1)
+            if (sys.version_info.major==3):
+               in1.fviname = numpy.fromfile(iur,'S1',32)
+            else:
+               fname[:] = numpy.fromfile(iur,'S32',1)
+               in1.fviname[:] = str(fname[0])
+# read in ion time history array sizes and data
+         if (itv > 0):
+            if ((nd==2) or (nd==3)):
+               i3[:] = numpy.fromfile(iur,int_type,3)
+               iq = i3[0]; it = i3[1]; ir = i3[2]
+               if (iq != mtv):
+                  print ("ion restart error: read/expected mtv=",iq,mtv)
+                  exit(1)
+               if (it != in1.ndim):
+                  print ("fvtmi size error read/expected ndim=",it,
+                         in1.ndim)
+                  exit(1)
+               if (ir != 3):
+                  print ("fvtmi size error read/expected 3=",ir)
+                  exit(1)
+               il = itv*it*ir
+               fvtmi[0:itv,:,:] = (numpy.fromfile(iur,float_type,il).
+                                   reshape(itv,it,3))
 
 # read in trajectory diagnostic parameter
    i1[:] = numpy.fromfile(iur,int_type,1); it = i1[0]
    if (it != in1.ntt):
-      print "restart error: read/expected ntt=", it, in1.ntt
+      print ("restart error: read/expected ntt=",it,in1.ntt)
       exit(1)
    if (in1.ntt > 0):
-      i1[:] = numpy.fromfile(iur,int_type,1); itt = i1[0]
-# read in time history sizes and data
-      if (itt > 0):
+# electron or ion trajectories
+      if ((in1.ndt==1) or (in1.ndt==2)):
+# read in trajectory record location
+         i1[:] = numpy.fromfile(iur,int_type,1); in1.ntrec = i1[0]
+# read in record length (zero if error) and file name (if no error)
+         if (in1.ntrec > 0):
+            i1[:] = numpy.fromfile(iur,int_type,1); it = i1[0]
+            if (it==0):
+               print ("ntt zero length record error")
+               exit(1)
+            if (sys.version_info.major==3):
+               in1.ftname = numpy.fromfile(iur,'S1',32)
+            else:
+               fname[:] = numpy.fromfile(iur,'S32',1)
+               in1.ftname[:] = str(fname[0])
+# restore particle trajectories
          if ((in1.nst==1) or (in1.nst==2)):
-            i3[:] = numpy.fromfile(iur,int_type,3)
-            ir = i3[0]; it = i3[1]; iq = i3[2]
-            if (ir != mtt):
-               print "restart error: read/expected mtt=", ir, mtt
+            i1[:] = numpy.fromfile(iur,int_type,1); itt = i1[0]
+# read in time history sizes and data
+            if (itt > 0):
+               if ((in1.nst==1) or (in1.nst==2)):
+                  i3[:] = numpy.fromfile(iur,int_type,3)
+                  ir = i3[0]; it = i3[1]; iq = i3[2]
+                  if (ir != mtt):
+                     print ("restart error: read/expected mtt=",ir,mtt)
+                     exit(1)
+                  if (it != idimp):
+                     print ("partd size error read/expected idimp=",it,
+                            numpy.size(partd,1))
+                     exit(1)
+                  if (iq != in1.nprobt):
+                     print ("partd size error read/expected nprobt=",iq,
+                            in1.nprobt)
+                     exit(1)
+                  il = itt*it*iq
+                  partd[0:itt,:,:] = (numpy.fromfile(iur,float_type,il).
+                                      reshape(itt,it,iq))
+
+# read in phase space diagnostic parameter
+   i1[:] = numpy.fromfile(iur,int_type,1); it = i1[0]
+   if (it != in1.nts):
+      print ("restart error: read/expected nts=",it,in1.nts)
+      exit(1)
+   if (in1.nts > 0):
+# read in electron record location
+      i1[:] = numpy.fromfile(iur,int_type,1); in1.nserec = i1[0]
+# read in record length (zero if error) and file name (if no error)
+      if (in1.nserec > 0):
+         i1[:] = numpy.fromfile(iur,int_type,1); it = i1[0]
+         if (it==0):
+            print ("nts zero length record error")
+            exit(1)
+         if (sys.version_info.major==3):
+            in1.fsename = numpy.fromfile(iur,'S1',32)
+         else:
+            fname[:] = numpy.fromfile(iur,'S32',1)
+            in1.fsename[:] = str(fname[0])
+# reposition stream file
+         mdiag1.fnsets1(in1.nserec-1,it,in1.fsename)
+# read in ion data
+      if (in1.movion > 0):
+# read in ion record location
+         i1[:] = numpy.fromfile(iur,int_type,1); in1.nsirec = i1[0]
+# read in ion record length (zero if error) and file name (if no error)
+         if (in1.nsirec > 0):
+            i1[:] = numpy.fromfile(iur,int_type,1); it = i1[0]
+            if (it==0):
+               print ("nts zero length ion record error")
                exit(1)
-            if (it != idimp):
-               print ("partd size error read/expected idimp=", it,
-                       numpy.size(partd,1))
-               exit(1)
-            if (iq != in1.nprobt):
-               print ("partd size error read/expected nprobt=", iq,
-                       in1.nprobt)
-               exit(1)
-            il = itt*it*iq
-            partd[0:itt,:,:] = (numpy.fromfile(iur,float_type,il).
-                                reshape(itt,it,iq))
+            if (sys.version_info.major==3):
+               in1.fsiname = numpy.fromfile(iur,'S1',32)
+            else:
+               fname[:] = numpy.fromfile(iur,'S32',1)
+               in1.fsiname[:] = str(fname[0])
+# reposition stream file
+            mdiag1.fnsets1(in1.nsirec-1,it,in1.fsiname)
 
 #-----------------------------------------------------------------------
 def close_restart1():
    """ close reset and restart files """
    global iur, iurr, iur0, i1, i2, i3, fname
 # iur, iurr = restart, reset, old restart file descriptors
-   iurr.close()
+#  iurr.close()
    if (in1.nustrt==1):
       if (in1.ntr > 0):
          iur.close()

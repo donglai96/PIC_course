@@ -1,3 +1,4 @@
+from __future__ import print_function
 import math
 import copy
 import wx
@@ -13,7 +14,8 @@ from matplotlib.colors import LogNorm
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.backends.backend_wx import NavigationToolbar2Wx
-from mpl_toolkits.axes_grid.anchored_artists import AnchoredText
+from matplotlib.offsetbox import AnchoredText
+#from mpl_toolkits.axes_grid.anchored_artists import AnchoredText
 
 import AutoMenu
 from Events import *
@@ -48,7 +50,7 @@ class KeyList:
     def getParameterValues(self):
         dc = self._dc
         for key in self.keyList:
-            if dc.has_key(key[0]):  # set to value in dictionary
+            if key[0] in dc:  # set to value in dictionary
                 setattr(self, "P" + key[0], dc[key[0]])
             else:  # set default value
                 setattr(self, "P" + key[0], key[1])
@@ -353,7 +355,7 @@ class DrawElectronDensity(DrawOptions, KeyList):
         self.setAxesType(self.PaxesType)
         self.updateAxes(fig, axes)
         xax = np.linspace(0, self.nx, self.nx)
-        print self.nx
+        print (self.nx)
         axes.set_xlim(0, self.nx)
         axes.plot(xax[0:self.nx - 1], self.ydata[0:self.nx - 1])
         # self.scaleYAxis(fig, axes, self.ydata[0:self.nx-1], 2.0)
@@ -391,7 +393,7 @@ class DrawSimple(DrawOptions, KeyList):
         self.m_Title = title
 
     def drawPlot(self, fig, axes):
-        print(self._PV)
+#       print(self._PV)
         if 'ylimits' not in self._PV:    #Set default limits on y axis
             self._PV['ylimits'] = (0, 0)
         self.syncParameters()
@@ -402,7 +404,11 @@ class DrawSimple(DrawOptions, KeyList):
             #Set limits on Y data to only move on powers of 2
             (oldbottom, oldtop) = self._PV['ylimits']
             (bottom, top) = axisPowerOfTwo(ydata)
-            ylim = (min(bottom, oldbottom), max(top, oldtop))
+            top = max(top,oldtop)
+            bottom = min(bottom,oldbottom)
+            if (top==bottom):
+               top = bottom + 1
+            ylim = (bottom,top)
             axes.set_ylim(ylim)
             self._PV['ylimits'] = ylim
         self.updateAxes(fig, axes)
@@ -455,7 +461,7 @@ class DrawVelocity(DrawOptions, KeyList):
             exit(0)
         self.plottype = "DRAWVELOCITY"
         self.simTime = simtime
-        vmax = self.ydata[0][0]
+        vmax = self.ydata[0][w-1]
         vmin = -vmax
         self.xax = NP.linspace(vmin, vmax, NP.size(self.ydata[0][1:]))
         self.fvm = fvm
@@ -470,7 +476,8 @@ class DrawVelocity(DrawOptions, KeyList):
         self.updateAxes(fig, axes)
         pidx = 0
         for i, ydata in enumerate(self.ydata):
-            axes.plot(self.xax, ydata[1:], '-x', label=self.labels[i])
+            w = np.size(ydata)
+            axes.plot(self.xax, ydata[:w-1], '-x', label=self.labels[i])
         #Display x axis label with moment info
         extText = ""
         dimlabels = ["x","y","z"]
@@ -482,6 +489,57 @@ class DrawVelocity(DrawOptions, KeyList):
                 except IndexError:
                     sys.stderr.write("fv must be at least an n by 2 matrix")
         axes.set_xlabel(r"Velocity"
+           "\n" + extText)
+        self.drawTime(fig, axes, "")
+        leg = axes.legend()
+        if leg is not None:
+            leg.get_frame().set_alpha(0.2)
+        if self.title is None:
+            self.title = self.plottype
+        axes.set_title(self.title, horizontalalignment='center', verticalalignment='top', transform=axes.transAxes, fontsize="smaller")
+        fig.tight_layout(rect=[0,0,1,0.95])
+
+class DrawEnergyDist(DrawOptions, KeyList):
+    def __init__(self, ydata, labels, simtime=None, wk=None, title=None):
+        DrawOptions.__init__(self)
+        self.setupKeylist(DrawOptions.defaultKeylist)
+        # self.ydata = [ydata]
+        self.labels = labels
+        w, h = np.shape(ydata)
+        self.ydata = []
+        for i in range(h):
+            self.ydata.append(ydata[:, i])
+        if len(labels) != len(self.ydata):
+            sys.stderr.write("Labels must be the same length as the columns in ydata!\n")
+            exit(0)
+        self.plottype = "DRAWVENERGYDIST"
+        self.simTime = simtime
+        emax = 2.0*self.ydata[0][w-1]
+        emin = 0.0
+        self.xax = NP.linspace(emin, emax, NP.size(self.ydata[0][1:]))
+        self.wk = wk
+        self.title = title
+
+    def drawPlot(self, fig, axes):
+        try:
+            self.syncParameters()
+            self.setAxesType(self.PaxesType)
+        except AttributeError:
+            self.PaxesType = "Linear-Linear"
+        self.updateAxes(fig, axes)
+        pidx = 0
+        for i, ydata in enumerate(self.ydata):
+            w = np.size(ydata)
+            axes.plot(self.xax, ydata[:w-1], '-x', label=self.labels[i])
+        #Display x axis label with moment info
+        extText = ""
+        if self.wk is not None:
+            for i,dim in enumerate(self.wk): # Iterate through dimensions
+                try:
+                    extText += "TOTAL ENERGY=" + str(dim) + "\n"
+                except IndexError:
+                    sys.stderr.write("fe must be at least an n by 2 matrix")
+        axes.set_xlabel(r"Energy"
            "\n" + extText)
         self.drawTime(fig, axes, "")
         leg = axes.legend()
@@ -525,7 +583,7 @@ class DrawEnergyControlPanel(BaseControlPanel):
         # The following methods should be overriden if inherited
 
     def _buildOptionsList(self):
-        items = self._PV["EnergyTypes"].iteritems()
+        items = iter(self._PV["EnergyTypes"].items())
         return [i[0] for i in items if not i[1]["on"]]
 
 
@@ -659,7 +717,8 @@ def lowerpowerof2(x):
 
 def axisPowerOfTwo(data):
     if len(data) == 0:
-        return (None,None)
+#       return (None,None)
+        return (0.0,0.0)
     minv = np.amin(data)
     maxv = np.amax(data)
     try:
@@ -678,12 +737,13 @@ class DrawEnergy(DrawOptions):
         self.timeindex = timeindex
         self.labels = labels
         if len(labels) != len(data[0]):
-            print "Length of lables(", len(labels), ") is not equal to length of energy data(", len(data[0]), ")"
+            print ("Length of lables(", len(labels), ") is not equal to length of energy data(",
+                   len(data[0]), ")")
             exit(0)
         self.title = title
 
     def drawPlot(self, fig, axes):
-        print(self._PV)
+#       print(self._PV)
         # Create the data model for communication with options,
         # if it does not exist in _PV
         if "EnergyTypes" not in self._PV:
@@ -697,15 +757,15 @@ class DrawEnergy(DrawOptions):
         # Use set axis types
         self.updateAxes3(fig, axes, self._PV["Axis-Type"])
         # Draw the plots that are on
-        ax_top = None;
-        ax_bot = None;
+        ax_top = float('-inf');
+        ax_bot = float('inf')
         #Plot all enabled plots
-        for item in self._PV["EnergyTypes"].iteritems():
+        for item in iter(self._PV["EnergyTypes"].items()):
             state = item[1]
             if state["on"]: #Plot if state is on
                 data_index = state["index"]
-                xdata = self.itw[0:self.timeindex]
-                ydata = self.edata[0:self.timeindex, data_index]
+                xdata = self.itw[0:self.timeindex+1]
+                ydata = self.edata[0:self.timeindex+1, data_index]
                 # Offset energy from original value?
                 yoffset = 0.0
                 if len(ydata) > 0 and self._PV["EnergyOffset"]:
@@ -715,6 +775,8 @@ class DrawEnergy(DrawOptions):
                 [bottom, top] = axisPowerOfTwo(ydata - yoffset)
                 ax_top = max(ax_top, top)
                 ax_bot = min(ax_bot, bottom) if ax_bot is not None else bottom
+                if (ax_top==ax_bot):
+                   ax_top = ax_bot + 1
         # Set the limits if valid values are specified
         if ax_top is not None and ax_bot is not None:
             axes.set_ylim([ax_bot, ax_top])
@@ -728,7 +790,7 @@ class DrawEnergy(DrawOptions):
         if self.timeindex == 0:
             axes.set_xlim([0,1])
         else:
-            axes.set_xlim([0, np.amax(self.itw[0:self.timeindex])])
+            axes.set_xlim([0, np.amax(self.itw[0:self.timeindex+1])])
         #Set title
         if self.title is None:
             self.title = self.plottype
@@ -936,7 +998,7 @@ class PhiControlPanel(BaseControlPanel):
             self._PV["DISP_OMD"] = 1.0
         else:
             self._PV["DISP_OMD"] = -1.0
-        print self._PV["DISP_OMD"]
+        print (self._PV["DISP_OMD"])
         wx.PostEvent(self.stf, RefreshGraphEvent())
 
 
@@ -1005,6 +1067,7 @@ class DrawPhi(KeyList):
 
 class DrawSimpleImage(KeyList):
     def __init__(self, name, data, text, labl=["", ""], extent=None, title=None, ticks_scale=None, norm='Log'):
+        print("DSI:name,text=",name,text)
         self.text = text
         self.plottype = name
         self.img = data
@@ -1038,6 +1101,7 @@ class DrawSimpleImage(KeyList):
         axes.set_xlabel(self.labl[0])
         axes.set_ylabel(self.labl[1])
         if self.ticks_scale is not None:
+            axes.set_xticks(axes.get_xticks())
             axes.set_xticklabels([str("{0:.2f}".format(self.ticks_scale*x)) for x in axes.get_xticks()])
         axes.annotate(self.text, xy=(0.0, 1.05), xycoords='axes fraction')
         if self.title is None:

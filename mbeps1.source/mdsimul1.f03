@@ -59,7 +59,7 @@
 !
 ! written by Viktor K. Decyk, UCLA
 ! copyright 1999-2016, regents of the university of california
-! update: december 9, 2017
+! update: january 13, 2021
       module fd1
       use f1
       use fb1
@@ -165,11 +165,20 @@
       integer, dimension(:), intent(inout) :: kpic
       wke = 0.0
 ! updates ppart and wke, and possibly ncl, ihole, irc
+! Boris pusher
       if (mzf==0) then
          call wmbpush1(ppart,fxyze,byze,kpic,ncl,ihole,omx,qbme,dt,dt,ci&
      &,wke,tpush,nx,mx,ipbc,relativity,plist,irc)
+! Analytic Boris pusher
+      else if (mzf==2) then
+         call wmabpush1(ppart,fxyze,byze,kpic,ncl,ihole,omx,qbme,dt,dt, &
+     &ci,wke,tpush,nx,mx,ipbc,relativity,plist,irc)
+! Exact Analytic pusher
+      else if (mzf==3) then
+         call wmeabpush1(ppart,fxyze,byze,kpic,ncl,ihole,omx,qbme,dt,dt,&
+     &ci,wke,tpush,nx,mx,ipbc,relativity,plist,irc)
 ! zero force: updates ppart, wke and possibly ncl, ihole, and irc
-      else
+      else if (mzf==1) then
          call wmpush1zf(ppart,kpic,ncl,ihole,dt,ci,wke,tpush,nx,mx,ipbc,&
      &relativity,plist,irc)
       endif
@@ -206,10 +215,20 @@
       integer, dimension(:), intent(inout) :: kipic
       wki = 0.0
 ! updates pparti and wki, and possibly ncl, ihole, irc
+! Boris pusher
       if (mzf==0) then
          call wmbpush1(pparti,fxyze,byze,kipic,ncl,ihole,omx,qbmi,dt,dt,&
      &ci,wki,tpush,nx,mx,ipbc,relativity,plist,irc)
-      else
+! Analytic Boris pusher
+      else if (mzf==2) then
+         call wmabpush1(pparti,fxyze,byze,kipic,ncl,ihole,omx,qbmi,dt,dt&
+     &,ci,wki,tpush,nx,mx,ipbc,relativity,plist,irc)
+! Exact Analytic pusher
+      else if (mzf==3) then
+         call wmeabpush1(pparti,fxyze,byze,kipic,ncl,ihole,omx,qbmi,dt, &
+     &dt,ci,wki,tpush,nx,mx,ipbc,relativity,plist,irc)
+! zero force: updates pparti, wki and possibly ncl, ihole, and irc
+      else if (mzf==1) then
          call wmpush1zf(pparti,kipic,ncl,ihole,dt,ci,wki,tpush,nx,mx,   &
      &ipbc,relativity,plist,irc)
       endif
@@ -519,7 +538,7 @@
       modesxb = min(modesxb,nxh+1)
       allocate(bt(2,modesxb))
 ! open file: updates nbrec and possibly iub
-      if (netrec==0) call dafopenvc1(bt,iub,nbrec,trim(fbname))
+      if (nbrec==0) call dafopenvc1(bt,iub,nbrec,trim(fbname))
       end subroutine
 !
 !-----------------------------------------------------------------------
@@ -687,8 +706,6 @@
       if (ntp > 0) call del_potential_diag1()
 ! longitudinal efield diagnostic
       if (ntel > 0) call del_elfield_diag1()
-! darwin electron current diagnostic
-      if (ntje > 0) call del_edcurrent_diag13()
 ! fluid moments diagnostic
       if (ntfm > 0) then
 ! electrons
@@ -696,6 +713,8 @@
 ! ions
          if (movion==1) call del_ifluidms_diag1()
       endif
+! darwin electron current diagnostic
+      if (ntje > 0) call del_edcurrent_diag13()
 ! vector potential diagnostic
       if (nta > 0) then
          call del_vdpotential_diag13()
@@ -704,6 +723,18 @@
       if (ntet > 0) call del_detfield_diag13()
 ! magnetic field diagnostic
       if (ntb > 0) call del_dbfield_diag13()
+! velocity diagnostic
+      if (ntv > 0) then
+         call del_evelocity_diag13()
+         if (movion==1) call del_ivelocity_diag13()
+      endif
+! trajectory diagnostic
+      if (ntt > 0) call del_traj_diag13()
+! phase space diagnostic
+      if (nts > 0) then
+         call del_ephasesp_diag1()
+         if (movion==1) call del_iphasesp_diag1()
+      endif
 ! ion diagnostics
       if (movion==1) then
 ! ion density diagnostic
@@ -726,13 +757,6 @@
          call del_dspectrum13()
       endif
       if (ntw > 0) call del_energy_diag13()
-      if (ntv > 0) then
-         call del_evelocity_diag1()
-         if (movion==1) then
-            call del_ivelocity_diag1()
-         endif
-      endif
-      if (ntt > 0) call del_traj_diag1()
       end subroutine
 !
 !-----------------------------------------------------------------------
@@ -830,6 +854,15 @@
       if (ntt > 0) then
          call init_traj_diag13(ntime)
       endif
+!
+! initialize phase space diagnostic:
+      if (nts > 0) then
+! electrons: allocates fvs
+         call init_ephasesp_diag13()
+! ions: allocates fvsi
+         if (movion==1) call init_iphasesp_diag13()
+      endif
+!
       end subroutine
 !
 !-----------------------------------------------------------------------

@@ -8,7 +8,7 @@
 ! writnml1 writes final diagnostic metafile to unit iudm
 ! written by viktor k. decyk, ucla
 ! copyright 2011, regents of the university of california
-! update: December 6, 2017
+! update: January 31, 2021
 !
       implicit none
 !
@@ -52,7 +52,7 @@
 !
 ! Beam Electron Parameters:
 ! npxb = number of beam electrons in x direction
-      integer :: npxb = 40960
+      integer :: npxb = 0
 ! vtdx/vtdy/vtdz = thermal velocity of beam electrons in x/y/z direction
       real :: vtdx = 1.0, vtdy = 1.0, vtdz = 1.0
 ! vdx/vdy/vdz = drift velocity of beam electrons in x/y/z direction
@@ -99,18 +99,28 @@
 ! mzf = (0,1) = (no,yes) set forces to zero
       integer :: mzf = 0
 !
-! External Traveling Wave Driver:
-! Ext(x) = e1*sin(k0*x + freq*time) + e2*cos(k0*x - freq*time)
+! External Electrostatic Traveling Wave Driver:
+! Extx(x) = e1*sin(k0*x + freq*time) + e2*cos(k0*x - freq*time)
 ! amodex = wave number which determines k0 = 2*pi*amodex/NX
 ! freq = frequency of external wave driver
 ! trmp = ramp-up time for external wave driver
 ! toff = shut-off time for external wave driver
+! if toff < 0 => toff = + infinity
       real :: amodex = 0.0, freq = 0.0, trmp = 0.0, toff = 0.0
 ! el0/er0 = external pump amplitude for left-going/right-going wave
 !     e1 = el0*(time/trmp), e2 = er0*(time/trmp), if time < trmp
 !     e1 = el0,             e2 = er0,             if trmp < time < toff
 !     e1 = 0,               e2 = 0,               if time > toff
       real :: el0 = 0.0, er0 = 0.0
+!
+! External Electromagnetic Circularly Polarized Wave Driver:
+! Exty(x) = e3*cos(k0*x - freq*time)
+! Extz(x) = e4*sin(k0*x - freq*time)
+! ey0/ez0 = external pump amplitude for y/z circularly polarized wave
+!     e3 = ey0*(time/trmp), e4 = ez0*(time/trmp), if time < trmp
+!     e3 = ey0,             e4 = ez0,             if trmp < time < toff
+!     e3 = 0,               e4 = 0,               if time > toff
+      real :: ey0 = 0.0, ez0 = 0.0
 !
 ! Restart Parameters:
 ! nustrt = type of initialization
@@ -156,12 +166,6 @@
 ! dw = frequency increment used in power spectrum
       real :: wmin = 0.0, wmax = 2.0, dw = 0.01
 !
-! Velocity-Space Diagnostic Parameter:
-! ntv = number of time steps between velocity-space diagnostic
-! ndv = (0,1,2,3) = display (nothing,electrons,ions,both)
-! nmv = number of segments in v for velocity distribution
-      integer :: ntv = 0, ndv = 3, nmv = 40
-!
 ! Fluid Moments Diagnostic Parameter:
 ! ntfm = number of time steps between fluid moments diagnostic
 ! ndfm = (0,1,2,3) = display (nothing,electrons,ions,both)
@@ -173,6 +177,36 @@
 !          (0 for beginnning of file, -1 to disable writes)
       integer :: nferec = -1, nfirec = -1
 !
+! Velocity-Space Diagnostic Parameter:
+! ntv = number of time steps between velocity-space diagnostic
+! ndv = (0,1,2,3) = display (nothing,electrons,ions,both)
+! nmv = number of segments in v for velocity distribution
+      integer :: ntv = 0, ndv = 3, nmv = 40
+! nvft = (1,2,3,4,5) = (cartesian,energy,cartesian+energy,cylindrical,
+!        (cylindrical+energy) 1d distribution functions
+!        for cylindrical, z axis is along the external magnetic field
+      integer :: nvft = 1
+! nverec = current record number for electron velocity distribution writes
+! nvirec = current record number for ion velocity distribution writes
+!          (0 for beginnning of file, -1 to disable writes)
+      integer :: nverec = -1, nvirec = -1
+!
+! Trajectory Diagnostic Parameters:
+! ntt = number of time steps between trajectory diagnostic.
+! ndt = (0,1,2) = process (nothing,electrons,ions)
+! nst = type of test particle distribution, if ntt > 0
+! 1 = uniformly distribution in real space
+! 2 = uniform distribution in velocity space
+! 3 = velocity slice at vtsx +- dvtx/2
+! nprobt = number of test charges whose trajectories will be stored.
+      integer :: ntt = 0, ndt = 1, nst = 0, nprobt = 0
+! vtsx = center of velocity slice if nst = 3
+! dvtx = width of velocity slice if nst = 3
+      real :: vtsx = 0.0, dvtx = 0.1
+! ntrec = current record number for trajectory writes
+!          (0 for beginnning of file, -1 to disable writes)
+      integer :: ntrec = -1
+!
 ! Phase-Space Diagnostic
 ! nts = number of time steps between phase space diagnostic
 ! nds = (0,1,2,3) = display (nothing,electrons,ions,both)
@@ -182,20 +216,16 @@
 ! nsvv = component(s) for phase-space display(s), if nts > 0
 ! 1 = vx-vy, 2 = vx-vz, 3 = vx-vy and vx-vz, 4 = vy-vz,
 ! 5 = vx-vy and vy-vz, 6 = vx-vy, vx-vz, and vy-vz
+! if the magnetic field is at an angle to the cartesian axes, then
+! vx means vperp1, vy means vperp2, and vz means vparallel
 ! ntsc = (0,1) = (no,yes) color beam particles
       integer :: nts = 0, nds = 3, nsxv = 1, nsvv = 0, ntsc = 0
-!
-! Trajectory Diagnostic Parameters:
-! ntt = number of time steps between trajectory diagnostic.
-! nst = type of test particle distribution, if ntt > 0
-! 1 = uniformly distribution in real space
-! 2 = uniform distribution in velocity space
-! 3 = velocity slice at vtsx +- dvtx/2
-! nprobt = number of test charges whose trajectories will be stored.
-      integer :: ntt = 0, nst = 0, nprobt = 0
-! vtsx = center of velocity slice if nst = 3
-! dvtx = width of velocity slice if nst = 3
-      real :: vtsx = 0.0, dvtx = 0.1
+! mvx/mvy = number of grids in x/y for phase space aggregation
+      integer :: mvx = 3, mvy = 3
+! nserec = current record number for electron phase space writes
+! nsirec = current record number for ion phase space writes
+!          (0 for beginnning of file, -1 to disable writes)
+      integer :: nserec = -1, nsirec = -1
 !
 ! ntm = number of time steps between momentum diagnostic
 !     integer :: ntm = 0
@@ -225,11 +255,12 @@
      &vty, vtz, vx0, vy0, vz0, vdx, vdy, vdz, vtdx, vtdy, vtdz,         &
      &relativity, ci, xtras, ndim, nvdist, treverse, tend, dt, ax,      &
      &nextrand, mzf, ndprof, ampdx, scaledx, shiftdx, amodex, freq,     &
-     &trmp, toff, el0, er0, ntw, ndw, ntde, modesxde, nderec, ntp, ndp, &
-     &modesxp, nprec, ntel, modesxel, nelrec, wmin, wmax, dw, ntv, ndv, &
-     &nmv, ntfm, ndfm, npro, nferec, nfirec, nts, nds, nsxv, nsvv, ntsc,&
-     &ntt, nst, nprobt, vtsx, dvtx, movion, emf, nustrt, ntr, idrun0,   &
-     &nplot, nvp, monitor
+     &trmp, toff, el0, er0, ey0, ez0, ntw, ndw, ntde, modesxde, nderec, &
+     &ntp, ndp, modesxp, nprec, ntel, modesxel, nelrec, wmin, wmax, dw, &
+     &ntfm, ndfm, npro, nferec, nfirec, ntv, ndv, nmv, nvft, nverec,    &
+     &nvirec, ntt, ndt, nst, nprobt, vtsx, dvtx, ntrec, nts, nds, nsxv, &
+     &nsvv, ntsc, mvx, mvy, nserec, nsirec, movion, emf, nustrt, ntr,   &
+     &idrun0, nplot, nvp, monitor
 !
 ! Electromagnetic Namelist
 ! External Magnetic Field Parameters:
@@ -425,6 +456,34 @@
       namelist /fm1d/ idrun, indx, ntfm, npro, ndim, nprd, nferec,      &
      &nfirec, t0, tend, dt, ffename, ffiname
 !
+! Namelist output for velocity-space diagnostic
+! nfvd = dimension of velocity distribution arrays fv and fvi
+! nfed = dimension of energy distribution arrays fe and fei
+      integer :: nfvd = 0, nfed = 0
+! fvename/fviname = file name for electron/ion velocity-space diagnostic
+      character(len=32) :: fvename = 'fve1.0', fviname = 'fvi1.0'
+! define namelist
+      namelist /fv1d/ idrun, indx, ntv, nmv, nvft, ndim, nfvd, nfed,    &
+     &omx, omy, omz, nverec, nvirec, t0, tend, dt, fvename, fviname
+!
+! Namelist output for trajectory diagnostic
+! ndimp = size of phase space trajectories
+      integer :: ndimp = 0
+! ftname = file name for trajectory diagnostic
+      character(len=32) :: ftname = 'tr1.0'
+! define namelist
+      namelist /tr1d/ idrun, indx, ntt, ndt, nst, nmv, ndim, ndimp,     &
+    &nprobt, ntrec, t0, tend, dt, ftname
+!
+! Namelist output for phase space diagnostic
+! nsxb = number of segments in x for global velocity distribution
+      integer :: nsxb = 0
+! fsename/fsiname = file name for electron/ion phase space diagnostic
+      character(len=32) :: fsename = 'pse1.0', fsiname = 'psi1.0'
+! define namelist
+      namelist /ps1d/ idrun, indx, nts, nmv, ndim, nsxb, nserec, nsirec,&
+     & t0, tend, dt, fsename, fsiname
+!
 ! Namelist output for ion density diagnostic
 ! fdname = file name for ion density diagnostic
       character(len=32) :: fdiname = 'denik1.0'
@@ -533,6 +592,19 @@
       if (ntfm > 0) then
          write (iudm,fm1d)
       endif
+! velocity-space diagnostic
+      if (ntv > 0) then
+         write (iudm,fv1d)
+      endif
+! trajectory diagnostic
+      if (ntt > 0) then
+         write (iudm,tr1d)
+      endif
+! phase space diagnostic
+      if (nts > 0) then
+         write (iudm,ps1d)
+      endif
+! ion parameters
       if (movion==1) then
 ! write out ion input parameters
          write (iudm,ions1)
@@ -547,6 +619,7 @@
             write (iudm,vcuri1d)
          endif
       endif
+      close(unit=iudm)
       end subroutine
 !
       subroutine closeff(iunit)

@@ -64,6 +64,18 @@
       end interface
 !
       interface
+         subroutine BGRASP13(part,label,itime,isc,omx,omy,omz,nx,iyp,   &
+     &ixp,idimp,npx,np,irc)
+         implicit none
+         integer, intent(in) :: itime, isc, nx, iyp, ixp, idimp, npx, np
+         integer, intent(inout) :: irc
+         real, intent(in) :: omx, omy, omz
+         character(len=*), intent(in) :: label
+         real, dimension(idimp,np), intent(in) :: part
+         end subroutine
+      end interface
+!
+      interface
          subroutine PGRASP13(ppart,kpic,label,itime,isc,nx,iyp,ixp,idimp&
      &,nppmx,mx1,irc)
          implicit none
@@ -77,12 +89,40 @@
       end interface
 !
       interface
+         subroutine PBGRASP13(ppart,kpic,label,itime,isc,omx,omy,omz,nx,&
+     &iyp,ixp,idimp,nppmx,mx1,irc)
+         implicit none
+         integer, intent(in) :: itime, isc, nx, iyp, ixp, idimp
+         integer, intent(in) :: nppmx, mx1
+         integer, intent(inout) :: irc
+         real, intent(in) :: omx, omy, omz
+         character(len=*), intent(in) :: label
+         real, dimension(idimp,nppmx,mx1), intent(in) :: ppart
+         integer, dimension(mx1), intent(in) :: kpic
+         end subroutine
+      end interface
+!
+      interface
          subroutine PMGRASP13(ppart,kpic,label,itime,isc,nx,iyp,ixp,    &
      &idimp,nppmx,mx1,ltag,irc)
          implicit none
          integer, intent(in) :: itime, isc, nx, iyp, ixp, idimp
          integer, intent(in) :: nppmx, mx1, ltag
          integer, intent(inout) :: irc
+         character(len=*), intent(in) :: label
+         real, dimension(idimp,nppmx,mx1), intent(in) :: ppart
+         integer, dimension(mx1), intent(in) :: kpic
+         end subroutine
+      end interface
+!
+      interface
+         subroutine PMBGRASP13(ppart,kpic,label,itime,isc,omx,omy,omz,nx&
+     &,iyp,ixp,idimp,nppmx,mx1,ltag,irc)
+         implicit none
+         integer, intent(in) :: itime, isc, nx, iyp, ixp, idimp
+         integer, intent(in) :: nppmx, mx1, ltag
+         integer, intent(inout) :: irc
+         real, intent(in) :: omx, omy, omz
          character(len=*), intent(in) :: label
          real, dimension(idimp,nppmx,mx1), intent(in) :: ppart
          integer, dimension(mx1), intent(in) :: kpic

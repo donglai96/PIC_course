@@ -50,6 +50,22 @@ class GraphicsInterface:
             self.pc.graphBeforeEndOfFF(label, early)
         self.pc.showVelocity(fv, s[:h], fvm=fvm, plottype=label, title=title)
 
+    def displayfe1(self, fe, wk, label, itime, nmv, irc, title=None, early=None):
+        """
+        ! displays energy distribution functions
+        ! fe = energy distribution
+        ! wk = total energy contained in distribution
+        ! label = long character string label for plot
+        ! itime = current time step
+        ! nmv = number of velocity intervals
+        ! irc = return code (0 = normal return)
+        """
+        w, h = numpy.shape(fe)
+        s = ["ENERGY"]
+        if early is not None:
+            self.pc.graphBeforeEndOfFF(label, early)
+        self.pc.showEnergyDist(fe, s[:h], wk=wk, plottype=label, title=title)
+
     def dpmgrasp1(self, ppart, kpic, label, itime, isc, nx, iyp, ixp, ntsc, irc, early=None, twophase=False):
         a, b, c = numpy.shape(ppart)
         idimp = a - 1 # Particle tags are last

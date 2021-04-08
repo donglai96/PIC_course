@@ -1,10 +1,10 @@
 def PopMenus(pc, in1):
     nplot = len(pc.defaultGraphs)
-    newwin = nplot / 4  # Number of new 4 chart windows to make
+    newwin = int(nplot / 4)  # Number of new 4 chart windows to make
     remplt = nplot % 4
 
 
-    pc.defaultGraphs = sorted(pc.defaultGraphs)  # Sort based on priority
+    pc.defaultGraphs = sorted(pc.defaultGraphs,key=lambda x: x.priority)  # Sort based on priority
     for i in range(newwin):  # Create 4 graph windows
         tmpl = [x.value for x in pc.defaultGraphs[0:4]]  # temporary list of 4 windows to show
         pc.defaultGraphs = pc.defaultGraphs[4:]  # remove already added windows from list

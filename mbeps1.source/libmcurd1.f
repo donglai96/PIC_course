@@ -23,7 +23,7 @@
 !             linear interpolation
 ! written by Viktor K. Decyk, UCLA
 ! copyright 2016, regents of the university of california
-! update: december 19, 2016
+! update: february 4, 2021
 !-----------------------------------------------------------------------
       subroutine GJPPOST1L(ppart,cu,kpic,qm,dt,nppmx,idimp,nx,mx,nxv,mx1&
      &,ipbc)
@@ -32,7 +32,7 @@
 ! if dt /= 0, particle positions are advanced a half time-step
 ! OpenMP version using guard cells
 ! data deposited in tiles
-! particles stored segmented array
+! particles stored in segmented array
 ! 14 flops/particle, 8 loads, 5 stores
 ! input: all, output: ppart, cu
 ! current density is approximated by values at the nearest grid points
@@ -81,8 +81,8 @@
 ! error if local array is too small
 !     if (mx.ge.MXV) return
 ! loop over tiles
-!$OMP PARALLEL DO
-!$OMP& PRIVATE(j,k,noff,npp,nn,x,dxp,amx,dx,vy,vz,scu)
+!$OMP PARALLEL DO                                                       &
+!$OMP& PRIVATE(j,k,noff,npp,nn,x,dxp,amx,dx,vy,vz,scu) SCHEDULE(dynamic)
       do 40 k = 1, mx1
       noff = mx*(k - 1)
       npp = kpic(k)
@@ -150,7 +150,7 @@
 ! also determines list of particles which are leaving this tile
 ! OpenMP version using guard cells
 ! data deposited in tiles
-! particles stored segmented array
+! particles stored in segmented array
 ! 14 flops/particle, 8 loads, 5 stores
 ! input: all except ncl, ihole, irc, output: ppart, ncl, ihole, cu, irc
 ! current density is approximated by values at the nearest grid points
@@ -199,9 +199,9 @@
 ! error if local array is too small
 !     if (mx.ge.MXV) return
 ! loop over tiles
-!$OMP PARALLEL DO
-!$OMP& PRIVATE(j,k,noff,npp,nn,ih,nh,x,dxp,amx,dx,vy,vz,edgelx,edgerx,
-!$OMP& scu)
+!$OMP PARALLEL DO                                                       &
+!$OMP& PRIVATE(j,k,noff,npp,nn,ih,nh,x,dxp,amx,dx,vy,vz,edgelx,edgerx,  &
+!$OMP& scu) SCHEDULE(dynamic)
       do 50 k = 1, mx1
       noff = mx*(k - 1)
       npp = kpic(k)
@@ -309,7 +309,7 @@
 ! if dt /= 0, particle positions are advanced a half time-step
 ! OpenMP version using guard cells
 ! data deposited in tiles
-! particles stored segmented array
+! particles stored in segmented array
 ! 24 flops/particle, 1 divide, 1 sqrt, 9 loads, 5 stores
 ! input: all, output: part, cu
 ! current density is approximated by values at the nearest grid points
@@ -358,8 +358,9 @@
          edgelx = 1.0
          edgerx = real(nx-1)
       endif
-!$OMP PARALLEL DO
-!$OMP& PRIVATE(j,k,noff,npp,nn,x,dxp,amx,dx,vx,vy,vz,p2,gami,scu)
+!$OMP PARALLEL DO                                                       &
+!$OMP& PRIVATE(j,k,noff,npp,nn,x,dxp,amx,dx,vx,vy,vz,p2,gami,scu)       &
+!$OMP& SCHEDULE(dynamic)
       do 40 k = 1, mx1
       noff = mx*(k - 1)
       npp = kpic(k)
@@ -434,7 +435,7 @@
 ! also determines list of particles which are leaving this tile
 ! OpenMP version using guard cells
 ! data deposited in tiles
-! particles stored segmented array
+! particles stored in segmented array
 ! 24 flops/particle, 1 divide, 1 sqrt, 9 loads, 5 stores
 ! input: all except ncl, ihole, irc, output: part, ncl, ihole, cu, irc
 ! current density is approximated by values at the nearest grid points
@@ -484,9 +485,9 @@
 !c     dimension scu(2,mx+1)
       ci2 = ci*ci
       anx = real(nx)
-!$OMP PARALLEL DO
-!$OMP& PRIVATE(j,k,noff,npp,nn,ih,nh,x,dxp,amx,dx,vx,vy,vz,p2,gami,     
-!$OMP& edgelx,edgerx,scu)
+!$OMP PARALLEL DO                                                       &
+!$OMP& PRIVATE(j,k,noff,npp,nn,ih,nh,x,dxp,amx,dx,vx,vy,vz,p2,gami,     &
+!$OMP& edgelx,edgerx,scu) SCHEDULE(dynamic)
       do 50 k = 1, mx1
       noff = mx*(k - 1)
       npp = kpic(k)
@@ -599,7 +600,7 @@
 ! using first-order spline interpolation
 ! OpenMP version using guard cells
 ! data deposited in tiles
-! particles stored segmented array
+! particles stored in segmented array
 ! 14 flops/particle, 8 loads, 4 stores
 ! input: all, output: part, amu
 ! momentum flux is approximated by values at the nearest grid points
@@ -638,8 +639,9 @@
 ! error if local array is too small
 !     if (mx.ge.MXV) return
 ! loop over tiles
-!$OMP PARALLEL DO
-!$OMP& PRIVATE(j,k,noff,npp,nn,x,dxp,amx,vx,v1,v2,samu)
+!$OMP PARALLEL DO                                                       &
+!$OMP& PRIVATE(j,k,noff,npp,nn,x,dxp,amx,vx,v1,v2,samu)                 &
+!$OMP& SCHEDULE(dynamic)
       do 40 k = 1, mx1
       noff = mx*(k - 1)
       npp = kpic(k)
@@ -693,7 +695,7 @@
 ! using first-order spline interpolation for relativistic particles
 ! OpenMP version using guard cells
 ! data deposited in tiles
-! particles stored segmented array
+! particles stored in segmented array
 ! 23 flops/particle, 1 divide, 8 loads, 4 stores
 ! input: all, output: part, amu
 ! momentum flux is approximated by values at the nearest grid points
@@ -735,8 +737,9 @@
 ! error if local array is too small
 !     if (mx.ge.MXV) return
 ! loop over tiles
-!$OMP PARALLEL DO
-!$OMP& PRIVATE(j,k,noff,npp,nn,x,dxp,amx,vx,vy,vz,p2,v1,v2,samu)
+!$OMP PARALLEL DO                                                       &
+!$OMP& PRIVATE(j,k,noff,npp,nn,x,dxp,amx,vx,vy,vz,p2,v1,v2,samu)        &
+!$OMP& SCHEDULE(dynamic)
       do 40 k = 1, mx1
       noff = mx*(k - 1)
       npp = kpic(k)

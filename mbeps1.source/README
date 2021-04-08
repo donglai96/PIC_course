@@ -52,8 +52,9 @@ the Makefile, and comment out the symbol GOBJS for No graphics and
 uncomment it either for Tektronix or X11.  To turn it on for Python,
 search for the string: Python Graphics in the Makefile, and comment out
 the symbols GMODSRC GPYOBJS for No graphics and uncomment them either
-for Tektronix or X11.  The X11 option requires that the library Ygl is
-installed and the symbol LGOPTS = -lYgl -L/usr/X11R6/lib -lX11.
+for Tektronix or X11.  The X11 option requires that the symbol
+LGOPTS = gks1/Ygl-4.2/libYgl.a -L/usr/X11R6/lib -lX11.  To display from
+a remove server, you should login to the server with the command ssh -X.
 
 To run with Tektronix, open the window xterm -t before executing the
 codes.

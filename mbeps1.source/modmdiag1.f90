@@ -10,6 +10,10 @@
 ! dafopenc1 opens new binary file for complex 1d scalar data.
 ! dafopenvc1 opens new binary file for complex 1d vector data.
 ! dafwrite1 writes real scalar record in direct access binary file
+! dafopenfv1 opens new binary file for real velocity-space data.
+! dafopentr1 opens new binary file for real trajectory data.
+! fnopens1: opens a new fortran unformatted stream file
+! fnsets1: repositions a fortran unformatted stream file
 ! dafwritev1 writes real vector record in direct access binary file
 ! dafwritec1 writes complex scalar record in direct access binary file
 ! dafwritevc1 writes complex vector record in direct access binary file
@@ -24,12 +28,21 @@
 ! mvpdist1 calculates 1 component velocity distribution, velocity
 !          moments, and entropy with segmented particle array
 !          calls VPDIST1 or VPDIST13
-! merpdist1 calculates 1d energy distribution for relativistic particles
-!           with segmented particle array
-!           calls ERPDIST1
-! mvdist1 calculates 1 component velocity distribution, velocity
+! mvbpdist1 calculates 3d velocity distribution and velocity moments
+!           for magnetized plasma with segmented particle array
+!           calls VBPDIST13
+! merpdist1 calculates 1d or 1-2/2d energy distribution for relativistic
+!           particles with segmented particle array
+!           calls ERPDIST1 or ERPDIST13
+! mvspdist1 calculates 1d velocity distribution in different regions of
+!           space
+!           calls PVSDIST1 or PVSDIST13
+! mvdist1 calculates 1 or 3 component velocity distribution, velocity
 !         moments, and entropy with standard particle array
 !         calls VPDIST1 or VDIST13
+! mvbdist1 calculates 3d velocity distribution and velocity moments
+!          for magnetized plasma with standard particle array
+!          calls VBDIST13
 ! mprofx13 calculates fluid moments from particle quantities
 !          assumes particle positions and velocities at same time level
 !          for 1-2/2d code
@@ -84,14 +97,17 @@
 !           calls FNPTRAJ1 or FNPTRAJ13
 ! mptraj1 copies tagged particles in ppart to array partt
 !         calls PTRAJ1 or PTRAJ13
+! dafwritefv1 writes velocity-space record in direct access binary file
+! dafwritetr1 writes trajectory record in direct access binary file
 ! setmbeam1 marks beam particles by setting a particle id in particle
 !           location 3 or 5
 !           calls STPBEAM1 or STPBEAM13
 ! written by viktor k. decyk, ucla
 ! copyright 2016, regents of the university of california
-! update: december 8, 2017
+! update: february 1, 2021
 !
       use libmdiag1_h
+      use in1, only: nustrt
       implicit none
 !
       contains
@@ -142,8 +158,13 @@
       integer :: lrec
       inquire(iolength=lrec) f(1); lrec = lrec*nx
       iunit = get_funit(iunit)
-      open(unit=iunit,file=fname,form='unformatted',access='direct',    &
+      if (nustrt==2) then
+         open(unit=iunit,file=fname,form='unformatted',access='direct', &
+     &recl=lrec,status='old')
+      else
+         open(unit=iunit,file=fname,form='unformatted',access='direct', &
      &recl=lrec,status='replace')
+      endif
       nrec = 1
       end subroutine
 !
@@ -164,8 +185,13 @@
       integer :: lrec
       inquire(iolength=lrec) f(1,1); lrec = lrec*size(f,1)*nx
       iunit = get_funit(iunit)
-      open(unit=iunit,file=fname,form='unformatted',access='direct',    &
+      if (nustrt==2) then
+         open(unit=iunit,file=fname,form='unformatted',access='direct', &
+     &recl=lrec,status='old')
+      else
+         open(unit=iunit,file=fname,form='unformatted',access='direct', &
      &recl=lrec,status='replace')
+      endif
       nrec = 1
       end subroutine
 !
@@ -184,8 +210,13 @@
       integer :: lrec
       inquire(iolength=lrec) fc(1); lrec = lrec*size(fc)
       iunit = get_funit(iunit)
-      open(unit=iunit,file=fname,form='unformatted',access='direct',    &
+      if (nustrt==2) then
+         open(unit=iunit,file=fname,form='unformatted',access='direct', &
+     &recl=lrec,status='old')
+      else
+         open(unit=iunit,file=fname,form='unformatted',access='direct', &
      &recl=lrec,status='replace')
+      endif
       nrec = 1
       end subroutine
 !
@@ -204,9 +235,111 @@
       integer :: lrec
       inquire(iolength=lrec) fc(1,1); lrec = lrec*size(fc)
       iunit = get_funit(iunit)
-      open(unit=iunit,file=fname,form='unformatted',access='direct',    &
+      if (nustrt==2) then
+         open(unit=iunit,file=fname,form='unformatted',access='direct', &
+     &recl=lrec,status='old')
+      else
+         open(unit=iunit,file=fname,form='unformatted',access='direct', &
      &recl=lrec,status='replace')
+      endif
       nrec = 1
+      end subroutine
+!
+!-----------------------------------------------------------------------
+      subroutine dafopenfv1(fvm,fv,fe,wk,iunit,nrec,fname)
+! this subroutine opens new direct access binary file
+! fvm,fv,fe = real velocity data to be written in each record
+! wk = total energy contained in distribution
+! iunit = fortran unit number to be used 
+! nrec = returns initial record number
+! fname = file name
+      implicit none
+      integer, intent(inout) :: iunit, nrec
+      real, intent(in) :: wk
+      real, dimension(:,:), intent(inout) :: fv, fvm, fe
+      character(len=*), intent(in) :: fname
+! local data
+      integer :: lrec, lwrec
+      inquire(iolength=lrec) fvm(1,1)
+      inquire(iolength=lwrec) wk
+      lrec = lrec*(size(fvm) + size(fv) + size(fe)) + lwrec
+      iunit = get_funit(iunit)
+      if (nustrt==2) then
+         open(unit=iunit,file=fname,form='unformatted',access='direct', &
+     &recl=lrec,status='old')
+      else
+         open(unit=iunit,file=fname,form='unformatted',access='direct', &
+     &recl=lrec,status='replace')
+      endif
+      nrec = 1
+      end subroutine
+!
+!-----------------------------------------------------------------------
+      subroutine dafopentr1(partt,iunit,nrec,fname)
+! this subroutine opens new direct access binary file
+! partt = real trajectory data to be written in each record 
+! iunit = fortran unit number to be used 
+! nrec = returns initial record number
+! fname = file name
+      implicit none
+      integer, intent(inout) :: iunit, nrec
+      real, dimension(:,:), intent(in) :: partt
+      character(len=*), intent(in) :: fname
+! local data
+      integer :: lrec
+      inquire(iolength=lrec) partt(1,1); lrec = lrec*size(partt)
+      iunit = get_funit(iunit)
+      if (nustrt==2) then
+         open(unit=iunit,file=fname,form='unformatted',access='direct', &
+     &recl=lrec,status='old')
+      else
+         open(unit=iunit,file=fname,form='unformatted',access='direct', &
+     &recl=lrec,status='replace')
+      endif
+      nrec = 1
+      end subroutine
+!
+!-----------------------------------------------------------------------
+      subroutine fnopens1(iunit,fname)
+! this subroutine opens a new fortran unformatted stream file
+! this is a Fortran2003 feature
+! iunit = fortran unit number to be used 
+! fname = file name
+      implicit none
+      integer, intent(in) :: iunit
+      character(len=*), intent(in) :: fname
+      if (nustrt==2) then
+         open(unit=iunit,file=fname,access='stream',form='unformatted', &
+     &status='old')
+      else
+         open(unit=iunit,file=fname,access='stream',form='unformatted', &
+     &status='replace')
+      endif
+      end subroutine
+!
+!-----------------------------------------------------------------------
+      subroutine fnsets1(nrec,nsize,fname)
+! this subroutine repositions a fortran unformatted stream file
+! this is a Fortran2003 feature
+! nrec = number of writes
+! nsize = number of words in each write
+! fname = file name
+      implicit none
+      integer, intent(in) :: nrec, nsize
+      character(len=*), intent(in) :: fname
+! local data
+      integer :: lrec, iunit
+      integer(kind=selected_int_kind(8)) :: loc
+      real :: f
+      logical :: opn
+      inquire(iolength=lrec) f
+      loc = lrec*nrec*nsize + 1
+      inquire (file=fname,opened=opn,number=iunit)
+      if (opn) then
+         write (unit=iunit,pos=loc)
+      else
+         write (*,*) 'file not repositioned (not open):', fname
+      endif
       end subroutine
 !
 !-----------------------------------------------------------------------
@@ -419,8 +552,35 @@
       end subroutine
 !
 !-----------------------------------------------------------------------
+      subroutine mvbpdist1(ppart,kpic,sfv,fvm,omx,omy,omz,tdiag,np,nmv)
+! calculates 3d velocity distribution and velocity moments
+! for magnetized plasma with segmented particle array
+      integer, intent(in) :: np, nmv
+      real, intent(in) :: omx, omy, omz
+      real, intent(inout) :: tdiag
+      real, dimension(:,:,:), intent(in) :: ppart
+      integer, dimension(:), intent(in) :: kpic
+      real, dimension(:,:,:), intent(inout) :: sfv
+      real, dimension(:,:), intent(inout) :: fvm
+! local data
+      integer :: idimp, nppmx, nmvf, mx1
+      integer, dimension(4) :: itime
+      double precision :: dtime
+! extract dimensions
+      idimp = size(ppart,1); nppmx = size(ppart,2)
+      nmvf = size(sfv,1); mx1 = size(kpic,1)
+! initialize timer
+      call dtimer(dtime,itime,-1)
+      call VBPDIST13(ppart,kpic,sfv,fvm,omx,omy,omz,idimp,nppmx,mx1,np, &
+    &nmv,nmvf)
+! record time
+      call dtimer(dtime,itime,1)
+      tdiag = tdiag + real(dtime)
+      end subroutine
+!
+!-----------------------------------------------------------------------
       subroutine merpdist1(ppart,kpic,sfv,ci,wk,tdiag,nmv)
-! calculates 1d energy distribution for relativistic particles
+! calculates 1d or 1-2/2d energy distribution for relativistic particles
 ! with segmented particle array
       integer, intent(in) :: nmv
       real, intent(in) :: ci
@@ -449,6 +609,37 @@
       end subroutine
 !
 !-----------------------------------------------------------------------
+      subroutine mvspdist1(ppart,kpic,fvs,tdiag,nmv,mvx)
+! calculates 1d velocity distribution in different regions of space
+      implicit none
+      integer, intent(in) :: nmv, mvx
+      real, intent(inout) :: tdiag
+      real, dimension(:,:,:), intent(in) :: ppart
+      real, dimension(:,:,:), intent(inout) :: fvs
+      integer, dimension(:), intent(in) :: kpic
+! local data
+      integer :: idimp, nppmx, nmvf, idimv, nxb, mx1
+      integer, dimension(4) :: itime
+      double precision :: dtime
+! extract dimensions
+      idimp = size(ppart,1); nppmx = size(ppart,2)
+      nmvf = size(fvs,1); idimv = size(fvs,2)
+      nxb = size(fvs,3)
+      mx1 = size(kpic,1)
+! initialize timer
+      call dtimer(dtime,itime,-1)
+! call low level procedure
+      if (idimv==1) then
+         call PVSDIST1(ppart,kpic,fvs,nmv,mvx,nxb,idimp,nppmx,mx1,nmvf)
+      else if (idimv==3) then
+         call PVSDIST13(ppart,kpic,fvs,nmv,mvx,nxb,idimp,nppmx,mx1,nmvf)
+      endif
+! record time
+      call dtimer(dtime,itime,1)
+      tdiag = tdiag + real(dtime)
+      end subroutine
+!
+!-----------------------------------------------------------------------
       subroutine mvdist1(part,fv,fvm,tdiag,np,nmv)
 ! calculates 1d velocity distribution, velocity moments, and entropy
 ! with standard particle array
@@ -470,6 +661,30 @@
       else if (idimv==3) then
          call VDIST13(part,fv,fvm,idimp,np,nmv,nmvf)
       endif
+! record time
+      call dtimer(dtime,itime,1)
+      tdiag = tdiag + real(dtime)
+      end subroutine
+!
+!-----------------------------------------------------------------------
+      subroutine mvbdist1(part,fv,fvm,omx,omy,omz,tdiag,np,nmv)
+! calculates 3d velocity distribution and velocity moments
+! for magnetized plasma with standard particle array
+      integer, intent(in) :: np, nmv
+      real, intent(in) :: omx, omy, omz
+      real, intent(inout) :: tdiag
+      real, dimension(:,:), intent(in) :: part
+      real, dimension(:,:), intent(inout) :: fv, fvm
+! local data
+      integer :: idimp, nmvf
+      integer, dimension(4) :: itime
+      double precision :: dtime
+! extract dimensions
+      idimp = size(part,1)
+      nmvf = size(fv,1)
+! initialize timer
+      call dtimer(dtime,itime,-1)
+      call VBDIST13(part,fv,fvm,omx,omy,omz,idimp,np,nmv,nmvf)
 ! record time
       call dtimer(dtime,itime,1)
       tdiag = tdiag + real(dtime)
@@ -920,6 +1135,79 @@
          irc = 1
       endif
 ! record time
+      call dtimer(dtime,itime,1)
+      tdiag = tdiag + real(dtime)
+      end subroutine
+!
+!-----------------------------------------------------------------------
+      subroutine dafwritefv1(fvm,fv,fe,wk,tdiag,iunit,nrec)
+! this subroutine writes real velocity record in direct access binary
+! file
+! fvm,fv,fe = real velocity data to be written in each record
+! wk = total energy contained in distribution
+! iunit = fortran unit number to be used 
+! nrec = record number for write (then updated to next record)
+      implicit none
+      integer, intent(in) :: iunit
+      integer, intent(inout) :: nrec
+      real, intent(in) :: wk
+      real, intent(inout) :: tdiag
+      real, dimension(:,:), intent(in) :: fvm, fv, fe
+! local data
+      integer :: j, k, ndim, nmvf, nfvd, nfed
+      integer, dimension(4) :: itime
+      double precision :: dtime
+      ndim = size(fvm,1)
+      nmvf = size(fv,1); nfvd = size(fv,2); nfed = size(fe,2)
+      if (nrec < 1) return
+      call dtimer(dtime,itime,-1)
+      write (unit=iunit,rec=nrec) ((fvm(j,k),j=1,ndim),k=1,3),          &
+     &((fv(j,k),j=1,nmvf),k=1,nfvd), ((fe(j,k),j=1,nmvf),k=1,nfed), wk
+      nrec = nrec + 1
+      call dtimer(dtime,itime,1)
+      tdiag = tdiag + real(dtime)
+      end subroutine
+!
+!-----------------------------------------------------------------------
+      subroutine dafwritetr1(partt,tdiag,iunit,nrec)
+! this subroutine writes real trajetory record in direct access binary
+! file
+! partt = real trajectory data to be written in each record 
+! iunit = fortran unit number to be used 
+! nrec = record number for write (then updated to next record)
+      implicit none
+      integer, intent(in) :: iunit
+      integer, intent(inout) :: nrec
+      real, intent(inout) :: tdiag
+      real, dimension(:,:), intent(in) :: partt
+! local data
+      integer :: j, k, idimp, nprobt
+      integer, dimension(4) :: itime
+      double precision :: dtime
+      idimp = size(partt,1); nprobt = size(partt,2)
+      if (nrec < 1) return
+      call dtimer(dtime,itime,-1)
+      write (unit=iunit,rec=nrec) ((partt(j,k),j=1,idimp),k=1,nprobt)
+      nrec = nrec + 1
+      call dtimer(dtime,itime,1)
+      tdiag = tdiag + real(dtime)
+      end subroutine
+!
+!-----------------------------------------------------------------------
+      subroutine mwrfvsdata1(fvs,tdiag,iunit)
+! writes 3d real vector data to a fortran unformatted file
+! iunit = fortran unit number to be used 
+      implicit none
+      integer, intent(in) :: iunit
+      real, intent(inout) :: tdiag
+      real, dimension(:,:,:), intent(in) :: fvs
+! local data
+      integer :: i, j, k, nmvf, ndim, nsxb
+      integer, dimension(4) :: itime
+      double precision :: dtime
+      nmvf = size(fvs,1); ndim = size(fvs,2); nsxb = size(fvs,3)
+      call dtimer(dtime,itime,-1)
+      write (unit=iunit) (((fvs(i,j,k),i=1,nmvf),j=1,ndim),k=1,nsxb)
       call dtimer(dtime,itime,1)
       tdiag = tdiag + real(dtime)
       end subroutine

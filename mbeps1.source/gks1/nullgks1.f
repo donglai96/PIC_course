@@ -1,7 +1,7 @@
 c Null general 1d gks graphics library
 c written by viktor k. decyk, ucla
 c copyright 1994, regents of the university of california
-c update: october 6, 2016
+c update: december 12, 2017
 c-----------------------------------------------------------------------
       subroutine GROPEN
 c this subroutine opens gks and activates standard workstation
@@ -284,6 +284,33 @@ c irc = return code (0 = normal return)
       return
       end
 c-----------------------------------------------------------------------
+      subroutine BGRASP13(part,label,itime,isc,omx,omy,omz,nx,iyp,ixp,  
+     1idimp,npx,np,irc)
+c for 1-2/2d code, this subroutine displays (iyp-ixp) phase space
+c for magnetized plasma, rotating cartesian co-ordinates so that B
+c points in the z direction.
+c if iyp=2, plot vperp1, if iyp=3, plot vperp2, if iyp=4, plot vparallel
+c if ixp=2, plot vperp1, if ixp=3, plot vperp2, if ixp=4, plot vparallel
+c plots background particles in blue and beam particles in red
+c part(1,n) = position x of particle n
+c part(2,n) = velocity vx of particle n
+c part(3,n) = velocity vy of particle n
+c part(4,n) = velocity vz of particle n
+c label = species label
+c itime = current time step
+c isc = power of 2 scale of range of values of velocity
+c omx/omy/omz = magnetic field electron cyclotron frequency in x/y/z 
+c nx = system length in x direction
+c iyp/ixp = phase space coordinates to be displayed
+c idimp = size of phase space = 4
+c npx = number of background particles
+c np = number of particles
+c irc = return code (0 = normal return)
+      dimension part(idimp,np)
+      character*(*) label
+      return
+      end
+c-----------------------------------------------------------------------
       subroutine PGRASP13(ppart,kpic,label,itime,isc,nx,iyp,ixp,idimp,  
      1nppmx,mx1,irc)
 c for 1-2/2d code, this subroutine displays (iyp-ixp) phase space
@@ -302,6 +329,33 @@ c nppmx = maximum number of particles in tile
 c mx1 = (system length in x direction - 1)/mx + 1
 c irc = return code (0 = normal return)
 c nxbs = length of scratch variable for plotting
+      dimension ppart(idimp,nppmx,mx1), kpic(mx1)
+      character*(*) label
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine PBGRASP13(ppart,kpic,label,itime,isc,omx,omy,omz,nx,iyp
+     1,ixp,idimp,nppmx,mx1,irc)
+c for 1-2/2d code, this subroutine displays (iyp-ixp) phase space
+c for magnetized plasma, rotating cartesian co-ordinates so that B
+c points in the z direction.
+c if iyp=2, plot vperp1, if iyp=3, plot vperp2, if iyp=4, plot vparallel
+c if ixp=2, plot vperp1, if ixp=3, plot vperp2, if ixp=4, plot vparallel
+c ppart(1,n,m) = position x of particle n in tile m
+c ppart(2,n,m) = velocity vx of particle n in tile m
+c ppart(3,n,m) = velocity vy of particle n in tile m
+c ppart(4,n,m) = velocity vz of particle n in tile m
+c kpic = number of particles per tile
+c label = species label
+c itime = current time step
+c isc = power of 2 scale of range of values of velocity
+c omx/omy/omz = magnetic field electron cyclotron frequency in x/y/z 
+c nx = system length in x direction
+c iyp/ixp = phase space coordinates to be displayed
+c idimp = size of phase space = 4
+c nppmx = maximum number of particles in tile
+c mx1 = (system length in x direction - 1)/mx + 1
+c irc = return code (0 = normal return)
       dimension ppart(idimp,nppmx,mx1), kpic(mx1)
       character*(*) label
       return
@@ -328,6 +382,36 @@ c mx1 = (system length in x direction - 1)/mx + 1
 c ltag = location in particle array of tags (3 or 5)
 c irc = return code (0 = normal return)
 c nxbs = length of scratch variable for plotting
+      dimension ppart(idimp,nppmx,mx1), kpic(mx1)
+      character*(*) label
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine PMBGRASP13(ppart,kpic,label,itime,isc,omx,omy,omz,nx,  
+     1iyp,ixp,idimp,nppmx,mx1,ltag,irc)
+c for 1d or 1-2/2d code, this subroutine displays (iyp-ixp) phase space
+c with beam  particles marked for color
+c for magnetized plasma, rotating cartesian co-ordinates so that B
+c points in the z direction.
+c if iyp=2, plot vperp1, if iyp=3, plot vperp2, if iyp=4, plot vparallel
+c if ixp=2, plot vperp1, if ixp=3, plot vperp2, if ixp=4, plot vparallel
+c ppart(1,n,m) = position x of particle n in tile m
+c ppart(2,n,m) = velocity vx of particle n in tile m
+c ppart(3,n,m) = velocity vy of particle n in tile m
+c ppart(4,n,m) = velocity vz of particle n in tile m
+c ppart(ltag,n,m) = particle id of tagged particle n in tile m
+c kpic = number of particles per tile
+c label = species label
+c itime = current time step
+c isc = power of 2 scale of range of values of velocity
+c omx/omy/omz = magnetic field electron cyclotron frequency in x/y/z 
+c nx = system length in x direction
+c iyp/ixp = phase space coordinates to be displayed
+c idimp = size of phase space = 3
+c nppmx = maximum number of particles in tile
+c mx1 = (system length in x direction - 1)/mx + 1
+c ltag = location in particle array of tags
+c irc = return code (0 = normal return
       dimension ppart(idimp,nppmx,mx1), kpic(mx1)
       character*(*) label
       return

@@ -98,13 +98,13 @@ class CopyResultEvent:
     	# to a sanitized event the simulation logic can work with.  The prevents
     	# extraneous CopyResultEvent objects from being made, which indicates
     	# a misunderstanding of how the data flow works
-    	if not type(result) == ResultEvent:
-    		raise TypeError
+        if not type(result) == ResultEvent:
+            raise TypeError
         if hasattr(result, 'data'):
             self.data = result.data
             self.name = result.data.plottype
         else:
-        	pdb.set_trace()
+            pdb.set_trace()
         if hasattr(result, 'time'):
             self.data.simTime = result.time
 

@@ -1,7 +1,8 @@
+from __future__ import print_function
 import sys
 from types import *
 import numpy as np
-import f90nml
+#import f90nml
 
 # import pyfft1mod as pfm
 
@@ -89,9 +90,9 @@ def ftPhikw(tax, phikw, dta, omegamax, N):
         pkw[i, :] = e[:]
         # Fourier transform along x axis
     for i, e in enumerate(phikw[0]):
-        print dta
-        print tax
-        print pkw[:, i]
+        print (dta)
+        print (tax)
+        print (pkw[:, i])
         ftr, wax = myFft(dta, np.array(tax), pkw[:, i], omegamax, N)
         # frs[:,i] = ftr[:]
         # frs[:,i] = np.abs(np.fft.rfft( np.abs(pkw[:,i]) ) )/np.size(pkw[:,i])
@@ -102,6 +103,6 @@ def ftPhikw(tax, phikw, dta, omegamax, N):
 if __name__ == "__main__":
     tmax = 10
     wm = 2.0 * np.pi * 50 / tmax
-    print wm
+    print (wm)
     tax = np.linspace(0, tmax, 5000)
     data = np.sin(wm * tax)

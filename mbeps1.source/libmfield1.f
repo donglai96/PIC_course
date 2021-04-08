@@ -6,14 +6,17 @@
 ! IBPOIS13 solves 1-2/2d poisson's equation for unsmoothed magnetic
 !          field
 ! MAXWEL1 solves 1-2/2d maxwell's equation for unsmoothed transverse
-!         electric and magnetic fields
+!         electric and magnetic fields using verlet algorithm
+! AMAXWEL1 solves 1-2/2d maxwell's equation for unsmoothed transverse
+!         electric and magnetic fields using analytic algorithm due to
+!         Irving Haber
 ! EMFIELD1 merges complex vector fields in fourier space
 ! BMFIELD1 copies complex vector fields in fourier space
 ! ADDCUEI13 adds electron and ion current densities
 ! EADDEXT1 add external traveling wave field to electric field for
 !          1d code
-! EADDEXT13 add external traveling wave field to electric field for
-!           1-2/2d code
+! EADDEXT13 add external traveling and external circularly polarized
+!           wave fields to electric field for 1-2/2d code
 ! BADDEXT1 adds constant to magnetic field for 1-2/2d code
 ! ADDVRFIELD13 calculates a = b + c
 ! BBPOIS13 solves 1-2/2d poisson's equation in fourier space for
@@ -49,7 +52,7 @@
 !           unpacked array and stores them into a packed array
 ! written by viktor k. decyk, ucla
 ! copyright 2016, regents of the university of california
-! update: april 21, 2017
+! update: february 3, 2020
 !-----------------------------------------------------------------------
       subroutine POIS1(q,fx,isign,ffc,ax,affp,we,nx)
 ! this subroutine solves 1d poisson's equation in fourier space for
@@ -191,7 +194,7 @@
       end
 !-----------------------------------------------------------------------
       subroutine MAXWEL1(eyz,byz,cu,ffc,ci,dt,wf,wm,nx,nxvh,nxhd)
-! this subroutine solves 2d maxwell's equation in fourier space for
+! this subroutine solves 1d maxwell's equation in fourier space for
 ! transverse electric and magnetic fields with periodic boundary
 ! conditions.
 ! input: all, output: wf, wm, eyz, byz
@@ -288,6 +291,123 @@
       return
       end
 !-----------------------------------------------------------------------
+      subroutine AMAXWEL1(eyz,byz,cu,ffc,ci,dt,wf,wm,nx,nxvh,nxhd)
+! this subroutine solves 1d maxwell's equation in fourier space for
+! transverse electric and magnetic fields with periodic boundary
+! conditions, using an analytic scheme due to Irving Haber
+! input: all, output: wf, wm, eyz, byz
+! approximate flop count is: 91*nxc plus 1 div, 1 sin, 1 cos, 1 tan
+! per particle, where nxc = nx/2 - 1
+! equations being solved are:
+! (c*Bn)/dt = -ick X En and
+! En/dt = ick X (c*Bn) - JTn+1/2
+! Note that the normalization of the E and B fields differ:
+! B is normalized to the dimensionless cyclotron frequency.
+! solutions are given by:
+! En+1 = C*En + iS*(k X (c*Bn)) - S*JTn+1/2/c
+! c*Bn+1 = C*(c*Bn) - iS*(k X En)/c + iS*T*(k X JTn+1/2)
+! where En = input eyz, En+1 = output eyz
+! Bn = input byz, Bn+1 = output byz, JTn+1/2 = affp*cu*s(kx)
+! C = cos(k*c*dt),  S = sin(k*c*dt)/k, T = tan(k*c*dt/2)/kc
+! k = kx = 2pi*j/nx, c = 1.0/ci
+! and s(kx) = exp(-(kx*ax)**2/2)
+! j = fourier mode numbers, except for
+! ey(kx=pi) = ez(kx=pi) = 0, and ey(kx=0) = ez(kx=0) = 0.
+! and similarly for by, bz.
+! cu(i,j) = complex current density
+! eyz(i,j) = complex transverse electric field
+! byz(i,j) = complex magnetic field
+! for component i, all for fourier mode (j-1)
+! real(ffc(1)) = affp = normalization constant = nx/np,
+! where np=number of particles
+! aimag(ffc(j)) = finite-size particle shape factor s
+! ci = reciprocal of velocity of light
+! dt = time interval between successive calculations
+! transverse electric field energy is also calculated, using
+! wf = nx*sum((1/affp)*|eyz(kx)|**2)
+! magnetic field energy is also calculated, using
+! wm = nx*sum((c*c/affp)*|byz(kx)|**2)
+! nx = system length in x direction
+! nxvh = first dimension of field arrays, must be >= nxh
+! nxhd = first dimension of form factor array, must be >= nxh
+      implicit none
+      integer nx, nxvh, nxhd
+      real ci, dt, wf, wm
+      complex eyz, byz, cu, ffc
+      dimension eyz(2,nxvh), byz(2,nxvh), cu(2,nxvh)
+      dimension ffc(nxhd)
+! local data
+      integer j, nxh
+      real dnx, dth, cc, cdth, affp, anorm, dkx
+      real t2, t, c, s, sc, afs, aft
+      complex zero, zt1, zt2, zt5, zt6, zt7, zt8
+      real at1
+      double precision wp, ws
+      if (ci.le.0.0) return
+      nxh = nx/2
+      dnx = 6.28318530717959/real(nx)
+      dth = 0.5*dt
+      cc = 1.0/ci
+      cdth = cc*dth
+      zero = cmplx(0.0,0.0)
+      affp = real(ffc(1))
+      anorm = 1.0/affp
+! update electromagnetic field and sum field energies
+      ws = 0.0d0
+      wp = 0.0d0
+! calculate the electromagnetic fields
+      do 10 j = 2, nxh
+      dkx = dnx*real(j - 1)
+      aft = affp*aimag(ffc(j))*ci
+      t = dkx*cdth
+      t2 = 1.0/dkx
+      s = t + t
+      c = cos(s)
+      s = sin(s)*t2
+      t = tan(t)*t2
+      afs = s*aft
+      sc = s*cc
+      aft = aft*t
+      s = s*ci
+! calculate iB
+      zt1 = cmplx(-aimag(byz(2,j)),real(byz(2,j)))
+      zt2 = cmplx(-aimag(byz(1,j)),real(byz(1,j)))
+! update electric field
+      zt5 = c*eyz(1,j) - sc*(dkx*zt1) - afs*cu(1,j)
+      zt6 = c*eyz(2,j) + sc*(dkx*zt2) - afs*cu(2,j)
+! calculate iE
+      zt1 = cmplx(-aimag(eyz(2,j)),real(eyz(2,j)))
+      zt2 = cmplx(-aimag(eyz(1,j)),real(eyz(1,j)))
+! store electric field and calculate energy
+      eyz(1,j) = zt5
+      eyz(2,j) = zt6
+      at1 = anorm*(zt5*conjg(zt5) + zt6*conjg(zt6))
+      ws = ws + dble(at1)
+! calculate ijperp
+      zt7 = cmplx(-aimag(cu(2,j)),real(cu(2,j)))
+      zt8 = cmplx(-aimag(cu(1,j)),real(cu(1,j)))
+! update magnetic field 
+      zt5 = c*byz(1,j) + s*dkx*(zt1 - aft*zt7)
+      zt6 = c*byz(2,j) - s*dkx*(zt2 - aft*zt8)
+! store magnetic field and calculate energy
+      byz(1,j) = zt5
+      byz(2,j) = zt6
+      at1 = anorm*(zt5*conjg(zt5) + zt6*conjg(zt6))
+      wp = wp + dble(at1)
+   10 continue
+! mode number kx = 0
+!     afs = affp*aimag(ffc(1))*dt
+!     eyz(1,1) = eyz(1,1) - afs*cu(1,1)
+!     eyz(2,1) = eyz(2,1) - afs*cu(2,1)
+      byz(1,1) = zero
+      byz(2,1) = zero
+      eyz(1,1) = zero
+      eyz(2,1) = zero
+      wf = real(nx)*ws
+      wm = real(nx)*(cc*cc)*wp
+      return
+      end
+!-----------------------------------------------------------------------
       subroutine EMFIELD1(fxyz,fx,eyz,ffc,nx,nxvh,nxhd)
 ! this subroutine merges complex vector fields
 ! includes additional smoothing
@@ -355,7 +475,9 @@
 ! where
 !     e1 = el0*(time/trmp), e2 = er0*(time/trmp), if time < trmp
 !     e1 = el0,             e2 = er0,             if trmp < time < toff
-!     e1 = 0,               e2 = 0,               if time > toff
+!     e1 = el0*((toff+trmp-time)/trmp), e2 = er0*((toff+trmp-time)/trmp)
+!                                            if toff < time < toff+trmp
+!     e1 = 0,               e2 = 0,               if time > toff+trmp
 ! if toff < 0 => toff = + infinity
       implicit none
       integer nx, nxe
@@ -364,12 +486,21 @@
       dimension fxe(nxe)
 ! local data
       integer j
-      real at, ft, dkx, xk
+      real tr, at, ft, dkx, xk
       if ((el0==0.0).and.(er0==0.0)) return
+      tr = toff + trmp
+! ramp up
       if (time < trmp) then
          at = time/trmp
       else if ((toff >= 0.0).and.(time > toff)) then
-         at = 0.0
+! ramp down
+         if (time < tr) then
+            at = (tr - time)/trmp
+! shutdown
+         else
+            at = 0.0
+         endif
+! constant amplitude
       else
          at = 1.0
       endif
@@ -384,29 +515,54 @@
       return
       end
 !-----------------------------------------------------------------------
-      subroutine EADDEXT13(fxyze,amodex,freq,time,trmp,toff,el0,er0,nx, &
-     &nxe)
-! add external traveling wave field to electric field for 1-2/2d code
+      subroutine EADDEXT13(fxyze,amodex,freq,time,trmp,toff,el0,er0,ey0,&
+     &ez0,nx,nxe)
+! for 1-2/2d code
+! add external traveling wave field to electrostatic electric field
 ! fxyze(1,x) = fxyze(1,x) + e1*sin(k0*x + freq*time)
 !                         + e2*cos(k0*x - freq*time)
 ! where
 !     e1 = el0*(time/trmp), e2 = er0*(time/trmp), if time < trmp
 !     e1 = el0,             e2 = er0,             if trmp < time < toff
-!     e1 = 0,               e2 = 0,               if time > toff
+!     e1 = el0*((toff+trmp-time)/trmp), e2 = er0*((toff+trmp-time)/trmp)
+!                                            if toff < time < toff+trmp
+!     e1 = 0,               e2 = 0,               if time > toff+trmp
+! if toff < 0 => toff = + infinity
+! add external circularly polarized wave field to electromagnetic
+! electric field:
+! fxyze(2,x) = fxyze(2,x) + e3*cos(k0*x + freq*time)
+! fxyze(3,x) = fxyze(3,x) + e4*sin(k0*x - freq*time)
+! where
+!     e3 = ey0*(time/trmp), e4 = ez0*(time/trmp), if time < trmp
+!     e3 = ey0,             e4 = ez0,             if trmp < time < toff
+
+!     e3 = ey0*((toff+trmp-time)/trmp), e4 = ez0*((toff+trmp-time)/trmp)
+!                                            if toff < time < toff+trmp
+!     e3 = 0,               e4 = 0,               if time > toff+trmp
 ! if toff < 0 => toff = + infinity
       implicit none
       integer nx, nxe
-      real amodex, freq, time, trmp, toff, el0, er0
+      real amodex, freq, time, trmp, toff, el0, er0, ey0, ez0
       real fxyze
       dimension fxyze(3,nxe)
 ! local data
       integer j
-      real at, ft, dkx, xk
-      if ((el0==0.0).and.(er0==0.0)) return
+      real tr, at, ft, dkx, xk
+      if ((el0==0.0).and.(er0==0.0).and.(ey0==0.0).and.(ez0==0.0))      &
+     &return
+      tr = toff + trmp
+! ramp up
       if (time < trmp) then
          at = time/trmp
       else if ((toff >= 0.0).and.(time > toff)) then
-         at = 0.0
+! ramp down
+         if (time < tr) then
+            at = (tr - time)/trmp
+! shutdown
+         else
+            at = 0.0
+         endif
+! constant amplitude
       else
          at = 1.0
       endif
@@ -417,6 +573,8 @@
          xk = dkx*real(j - 1)
          fxyze(1,j) = fxyze(1,j) + at*(er0*cos(xk - ft)                 &
      &                               + el0*sin(xk + ft))
+         fxyze(2,j) = fxyze(2,j) + at*(ey0*cos(xk - ft))
+         fxyze(3,j) = fxyze(3,j) + at*(ez0*sin(xk - ft))
    10    continue
       endif
       return

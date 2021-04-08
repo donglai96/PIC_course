@@ -1,14 +1,19 @@
 from lib import *
 import numpy as NP
-import cPickle
+if (sys.version_info.major==3):
+   import _pickle as cPickle
+else:
+   import cPickle
 import time
 
 from Graphs import *
 from Events import *
 
 from multiprocessing import Queue
-import Queue as QE
-
+if (sys.version_info.major==3):
+   import queue as QE
+else:
+   import Queue as QE
 
 class PipeSimulation():
     def __init__(self, notify_window, pipe, que):

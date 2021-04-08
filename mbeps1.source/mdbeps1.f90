@@ -92,9 +92,9 @@
 ! ffe = form factor array for iterative poisson solver
       call init_dfields13()
 !
-! prepare fft tables
+! prepare fft tables: updates mixup, sct
       call mfft1_init(mixup,sct,indx)
-! calculate form factor: ffc
+! calculate form factor: updates ffc
       call mpois1_init(ffc,ax,affp,nx)
 ! initialize different ensemble of random numbers
       if (nextrand > 0) call mnextran1(nextrand,ndim,np+npi)
@@ -139,7 +139,7 @@
          call bread_drestart13(iur0)
       endif
 !
-! calculate form factor: ffe
+! calculate form factor: updates ffe
       call mepois1_init(ffe,ax,affp,wpm,ci,nx)
 !
 ! initialize longitudinal electric field
@@ -176,7 +176,7 @@
       if (nustrt==2) call dread_drestart13(iur)
 !
 ! write reset file
-      call bwrite_drestart13(iurr,ntime)
+!     call bwrite_drestart13(iurr,ntime)
 !
 ! initialization time
       call dtimer(dtime,itime,1)
@@ -187,11 +187,11 @@
       write (iuot,*) 'program mdbeps1'
 !
 ! debug reset
-   10 if (irc==6) then
-         irc = 0
-         call bread_drestart13(iurr)
-         call reset_ddiags13()
-      endif
+!  10 if (irc==6) then
+!        irc = 0
+!        call bread_drestart13(iurr)
+!        call reset_ddiags13()
+!     endif
 !
 ! * * * start main iteration loop * * *
 !
@@ -347,7 +347,8 @@
 !
 ! add external traveling wave field
       ts = dt*real(ntime)
-      call meaddext13(fxyze,tfield,amodex,freq,ts,trmp,toff,el0,er0,nx)
+      call meaddext13(fxyze,tfield,amodex,freq,ts,trmp,toff,el0,er0,ey0,&
+     &ez0,nx)
 !
 ! copy guard cells: updates fxyze
       call mcguard1(fxyze,tguard,nx)
@@ -488,30 +489,64 @@
       if (ntv > 0) then
          it = ntime/ntv
          if (ntime==ntv*it) then
-! updates ppart, kpic, fv, fvm, fvtm
-            call evelocity_diag13(ppart,kpic,fv,fvm,fvtm)
+! updates fv, fe, fvm, fvtm, wkt
+            call evelocity_diag13(fv,fe,fvm,fvtm,wkt)
 ! display electron velocity distributions
-            call displayfv1(fv,fvm,' ELECTRON',ntime,nmv,2,irc)
-            if (irc==1) exit; irc = 0
+            if ((ndv==1).or.(ndv==3)) then
+               if ((nvft==1).or.(nvft==3)) then
+                  call displayfv1(fv,fvm,' ELECTRON',ntime,nmv,2,irc)
+                  if (irc==1) exit; irc = 0
+               endif
+! display electron velocity distributions in cylindrical co-ordinates
+               if ((nvft==4).or.(nvft==5)) then   
+                  call displayfvb1(fv,fvm,' ELECTRON',ntime,nmv,2,irc)  
+                  if (irc==1) exit; irc = 0    
+               endif
+! display electron energy distribution
+               if ((nvft==2).or.(nvft==3).or.(nvft==5)) then
+                  call displayfe1(fe,wkt,' ELECTRON',ntime,nmv,irc)
+                  if (irc==1) exit; irc = 0
+               endif
+            endif
 ! ion distribution function
             if (movion==1) then
-! updates pparti, kipic, fvi, fvmi, fvtmi
-               call ivelocity_diag13(pparti,kipic,fvi,fvmi,fvtmi)
+! updates fvi, fei, fvmi, fvtmi, wkt
+               call ivelocity_diag13(fvi,fei,fvmi,fvtmi,wkt)
 ! display ion velocity distributions
-               call displayfv1(fvi,fvmi,' ION',ntime,nmv,2,irc)
-               if (irc==1) exit; irc = 0
+               if ((ndv==2).or.(ndv==3)) then
+                  if ((nvft==1).or.(nvft==3)) then
+                     call displayfv1(fvi,fvmi,' ION',ntime,nmv,2,irc)
+                     if (irc==1) exit; irc = 0
+                  endif
+! display electron velocity distributions in cylindrical co-ordinates
+                  if ((nvft==4).or.(nvft==5)) then         
+                     call displayfvb1(fvi,fvmi,' ION',ntime,nmv,2,irc) 
+                     if (irc==1) exit; irc = 0 
+                  endif
+! display ion energy distribution
+                  if ((nvft==2).or.(nvft==3)) then
+                     ts = fei(2*nmv+2,1)
+                     fei(2*nmv+2,1) = rmass*ts
+                     call displayfe1(fei,wkt,' ION',ntime,nmv,irc)
+                     if (irc==1) exit; irc = 0
+                     fei(2*nmv+2,1) = ts
+                  endif
+               endif
             endif
          endif
       endif
-!
-! trajectory diagnostic: updates ppart, kpic, partd, fvtp, fvmtp
+! trajectory diagnostic: updates partd, fvtp, fvmtp
       if (ntt > 0) then
          it = ntime/ntt
          if (ntime==ntt*it) then
-            call traj_diag13(ppart,kpic,partd,fvtp,fvmtp)
+            call traj_diag13(partd,fvtp,fvmtp)
             if (nst==3) then
 ! display test particle velocity distributions
-               call displayfv1(fvtp,fvmtp,' ELECTRON',ntime,nmv,2,irc)
+               if (ndt==1) then
+                  call displayfv1(fvtp,fvmtp,' ELECTRON',ntime,nmv,2,irc)
+               else if (ndt==2) then
+                  call displayfv1(fvtp,fvmtp,' ION',ntime,nmv,2,irc)
+               endif
                if (irc==1) exit; irc = 0
             endif
          endif
@@ -521,14 +556,16 @@
       if (nts > 0) then
          it = ntime/nts
          if (ntime==nts*it) then
+! calculate electron phase space distribution: updates fvs
+            call ephasesp_diag1(fvs)
 ! plot electrons
             if ((nds==1).or.(nds==3)) then
 ! vx, vy, or vz versus x
                nn = nsxv; ierr = 0
                do i = 1, 3
                   if (mod(nn,2)==1) then
-                     call dpmgrasp1(ppart,kpic,' ELECTRON',ntime,999,nx,&
-     &i+1,1,ntsc,irc)
+                     call dpmbgrasp1(ppart,kpic,' ELECTRON',ntime,999,  &
+     &omx,omy,omz,nx,i+1,1,ntsc,irc)
                      if (irc==1) then
                         ierr = 1
                         exit
@@ -542,8 +579,8 @@
                nn = nsvv; ierr = 0
                do i = 1, 3
                   if (mod(nn,2)==1) then
-                     call dpmgrasp1(ppart,kpic,' ELECTRON',ntime,999,nx,&
-     &min(i+2,4),max(i,2),ntsc,irc)
+                     call dpmbgrasp1(ppart,kpic,' ELECTRON',ntime,999,  &
+     &omx,omy,omz,nx,min(i+2,4),max(i,2),ntsc,irc)
                      if (irc==1) then
                         ierr = 1
                         exit
@@ -556,15 +593,16 @@
             endif
 ! ion phase space
             if (movion==1) then
+! calculate ion phase space distribution: updates fvsi
+               call iphasesp_diag1(fvsi)
 ! plot ions
                if ((nds==2).or.(nds==3)) then
 ! vx, vy, or vz versus x
                   nn = nsxv; ierr = 0
                   do i = 1, 3
                      if (mod(nn,2)==1) then
-                        call dpmgrasp1(pparti,kipic,' ION',ntime,999,nx,&
-     &i+1,1,ntsc,irc)
-
+                        call dpmbgrasp1(pparti,kipic,' ION',ntime,999,  &
+     &omx,omy,omz,nx,i+1,1,ntsc,irc)
                         if (irc==1) then
                            ierr = 1
                            exit
@@ -578,8 +616,8 @@
                   nn = nsvv; ierr = 0
                   do i = 1, 3
                      if (mod(nn,2)==1) then
-                        call dpmgrasp1(pparti,kipic,' ION',ntime,999,nx,&
-     &min(i+2,4),max(i,2),ntsc,irc)
+                        call dpmbgrasp1(pparti,kipic,' ION',ntime,999,  &
+     &omx,omy,omz,nx,min(i+2,4),max(i,2),ntsc,irc)
                         if (irc==1) then
                            ierr = 1
                            exit
@@ -610,7 +648,7 @@
          endif
       endif
 !
-! energy diagnostic
+! energy diagnostic: updates wt
       if (ntw > 0) then
          it = ntime/ntw
          if (ntime==ntw*it) then
@@ -670,12 +708,17 @@
 !
 ! velocity diagnostic
       if (ntv > 0) then
-         call displayfvt1(fvtm,' ELECT',t0,dt*real(ntv),itv,irc)
-         if (irc==1) stop
-! ions
-         if (movion==1) then
-            call displayfvt1(fvtmi,' ION',t0,dt*real(ntv),itv,irc)
+! display electron distribution time histories and entropy
+         if ((ndv==1).or.(ndv==3)) then
+            call displayfvt1(fvtm,' ELECT',t0,dt*real(ntv),itv,irc)
             if (irc==1) stop
+         endif
+! display ion distribution time histories and entropy
+         if (movion==1) then
+            if ((ndv==2).or.(ndv==3)) then
+               call displayfvt1(fvtmi,' ION',t0,dt*real(ntv),itv,irc)
+               if (irc==1) stop
+            endif
          endif
       endif
 !

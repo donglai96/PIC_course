@@ -2,6 +2,7 @@
 # 1D Electrostatic OpenMP PIC code
 # written by Viktor K. Decyk and Joshua Kelly, UCLA
 # copyright 2016, regents of the university of california
+from __future__ import print_function
 import sys
 import math
 import numpy
@@ -77,16 +78,16 @@ def main(*args):
     # * * * start main iteration loop * * *
     nstart = 0
     nloop = 100
-    for ntime in xrange(nstart, nloop):
-        print "ntime = ", ntime
+    for ntime in range(nstart, nloop):
+        print ("ntime = ", ntime)
         curtime = ntime * in1.dt
         if ntime == nstart:
             pc.runOnce()
         pc.setTime(curtime, in1.dt)
         if hasattr(in1, 'ntp'):
-            print in1.ntp
+            print (in1.ntp)
         if hasattr(in1, 'josh'):
-            print in1.josh
+            print (in1.josh)
         pc.getEvents()  #Waits here for GUI
         pc.fastForward()
 

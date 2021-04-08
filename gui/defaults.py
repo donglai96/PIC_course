@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 This class is intended to be inherited.  It simply communicates data from a frame to a loader object
 """
@@ -5,7 +6,7 @@ import pickle
 import wx
 
 """
-This class is just reuable functions to handle common taks
+This class is just reusable functions to handle common task
 """
 
 
@@ -20,7 +21,7 @@ class DefaultsCommLink:
         try:
             md = loader.defaultDictionary[windowname]
         except KeyError:
-            print "Could not load defaults " + str(windowname)
+            print ("Could not load defaults " + str(windowname))
             return  # could not load defaults
         wr = wx.Rect(md["WindowRect"][0], md["WindowRect"][1], md["WindowRect"][2], md["WindowRect"][3])
         self.SetRect(wr)
@@ -40,7 +41,7 @@ class DefaultLoader:
 
     def updateLoader(self, windowname, theDict):
         self.defaultDictionary[windowname] = theDict
-        print self.defaultDictionary
+        print (self.defaultDictionary)
 
     def saveToFile(self):
         with open(DefaultLoader.default_file, "w") as fh:
@@ -48,7 +49,7 @@ class DefaultLoader:
 
     def loadFromFile(self):
         try:
-            with open(DefaultLoader.default_file, "r") as fh:
+            with open(DefaultLoader.default_file, "rb") as fh:
                 self.defaultDictionary = pickle.load(fh)
         except IOError:
-            print "Could not open the defaults file.  I suggest you make one, by using the Layout/Save Defaults Menu"
+            print ("Could not open the defaults file.  I suggest you make one, by using the Layout/Save Defaults Menu")

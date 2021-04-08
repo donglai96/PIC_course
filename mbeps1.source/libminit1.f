@@ -30,6 +30,7 @@
 ! DBLKP1L finds the maximum number of particles in each tile
 ! ranorm gaussian random number generator
 ! randum uniform random number generator
+! rd1rand 1d rayleigh random number generator
 ! The following functions are used by FDISTR1 and GFDISTR1:
 ! DLDISTR1 calculates either a density function or its integral
 !          for a linear density profile with uniform background
@@ -46,7 +47,7 @@
 !          for a gaussian density profile with no background density
 ! written by Viktor K. Decyk, UCLA
 ! copyright 2016, regents of the university of california
-! update: december 5, 2017
+! update: november 10, 2020
 !-----------------------------------------------------------------------
       subroutine NEXTRAN1(nextrand,ndim,np)
 ! for 1d code, this subroutine skips over nextrand groups of random
@@ -444,7 +445,7 @@
 ! to calculate it.  We then solve the pt**2 equation to obtain:
 ! (p/m0)**2 = ((pt*vth)**2)*(1 + (pt/4c)**2),
 ! where vth = sqrt(kT/m0) is the thermal velocity.  This equation is
-! satisfied if we set the individual components j as follows:
+! satisfied if we set the individual component j as follows:
 ! pj/m0 = ptj*vth*sqrt(1 + (pt/4c)**2)
 ! part(2,n) = momentum px of particle n
 ! vtx = thermal velocity of particles in x direction
@@ -489,6 +490,7 @@
 ! for 1-2/2d code, this subroutine calculates initial particle
 ! momenta with maxwell-juttner velocity distribution with drift
 ! for relativistic particles
+! algorithm is only approximate, valid when gamma of distribution < 4
 ! f(p) = exp(-(gamma-1)*(m0c**2)/kT), where gamma = sqrt(1+(p/m0c)**2)
 ! since (gamma-1)*(m0c**2) = (p**2/m0)/(gamma+1), we can write
 ! f(p) = exp(-pt**2/2), where pt**2 = p**2/((gamma+1)/2)*m0*kT
@@ -909,6 +911,15 @@
       return
       end
 !-----------------------------------------------------------------------
+      function rd1rand()
+! random number generator for 1d rayleigh distribution:
+! f(x) = x*exp(-x*x/2), using inverse transformation method
+      implicit none
+      double precision rd1rand, randum
+      rd1rand = dsqrt(-2.0d0*dlog(randum()))
+      return
+      end
+!-----------------------------------------------------------------------
       function DLDISTR1(x,anlx,anxi,shift,intg)
 ! this function calculates either a density function or its integral
 ! for a linear density profile.  Used in initializing particle
@@ -1148,3 +1159,42 @@
       if (x.lt.0.0d0) derfn = -derfn
       return
       end
+!-----------------------------------------------------------------------
+      function dsifn(x)
+! this function calculates the real sine integral function, according to
+! the formulae given in Abramowitz and Stegun, Handbook of Mathematical
+! Functions, p. 233.  Valid for abs(x) >= 1.  Error is < 5 x 10-7.
+      implicit none
+      double precision x
+! local data
+      double precision dsifn, twopi
+      double precision a1, a2, a3, a4, b1, b2, b3, b4, t, tt, f, u, g
+      double precision c1, c2, c3, c4, d1, d2, d3, d4
+      data twopi /6.28318530717959/
+      data a1, a2, a3, a4 /38.027264,265.187033,335.677320,38.102495/
+      data b1, b2, b3, b4 /40.021433,322.624911,570.236280,157.105423/
+      data c1, c2, c3, c4 /42.242855,302.757865,352.018498,21.821899/
+      data d1, d2, d3, d4 /48.196927,482.485984,1114.978885,449.690326/
+      save a1, a2, a3, a4, b1, b2, b3, b4
+      save c1, c2, c3, c4, d1, d2, d3, d4
+      t = abs(x)
+      if (t.ge.1.0d0) then
+         t = x*x
+         tt = t*t
+         f = a4 + a3*t + a2*tt
+         u = b4 + b3*t + b2*tt
+         f = f + a1*t*tt + tt*tt
+         u = u + b1*t*tt + tt*tt
+         f = (f/u)/x
+         g = c4 + c3*t + c2*(t*t)
+         u = d4 + d3*t + d2*(t*t)
+         g = g + c1*t*tt + tt*tt
+         u = u + d1*t*tt + tt*tt
+         g = (g/u)/t
+         dsifn = 0.25*twopi - f*cos(x) - g*sin(x)
+      else
+         dsifn = 0.0d0
+      endif
+      return
+      end
+

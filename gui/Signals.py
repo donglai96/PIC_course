@@ -20,7 +20,7 @@ class VarChangeSignal:
 class SyncMode:
     def __init__(self):
         self.cmd = "ASYNC"
-        self.async = False
+        self.bsync = False
 
 
 class OpenFrame:

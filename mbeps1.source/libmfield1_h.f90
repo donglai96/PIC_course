@@ -49,6 +49,18 @@
       end interface
 !
       interface
+         subroutine AMAXWEL1(eyz,byz,cu,ffc,ci,dt,wf,wm,nx,nxvh,nxhd)
+         implicit none
+         integer, intent(in) :: nx, nxvh, nxhd
+         real, intent(in) :: ci, dt
+         real, intent(inout) :: wf, wm
+         complex, dimension(2,nxvh), intent(inout) :: eyz, byz
+         real, dimension(2,2*nxvh), intent(in) :: cu
+         complex, dimension(nxhd), intent(in) :: ffc
+         end subroutine
+      end interface
+!
+      interface
          subroutine EMFIELD1(fxyz,fx,eyz,ffc,nx,nxvh,nxhd)
          implicit none
          integer, intent(in) :: nx, nxvh, nxhd
@@ -90,10 +102,11 @@
 !
       interface
          subroutine EADDEXT13(fxyze,amodex,freq,time,trmp,toff,el0,er0, &
-     &nx,nxe)
+     &ey0,ez0,nx,nxe)
          implicit none
          integer, intent(in) :: nx, nxe
          real, intent(in) :: amodex, freq, time, trmp, toff, el0, er0
+         real, intent(in) :: ey0, ez0
          real, dimension(3,nxe), intent(inout) :: fxyze
          end subroutine
       end interface

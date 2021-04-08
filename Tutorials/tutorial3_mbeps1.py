@@ -2,6 +2,7 @@
 # 1D Electrostatic OpenMP PIC code
 # written by Viktor K. Decyk and Joshua Kelly, UCLA
 # copyright 2016, regents of the university of california
+from __future__ import print_function
 import sys
 import math
 import numpy
@@ -11,6 +12,7 @@ from libmpush1 import *
 from fomplib import *
 from fgraf1 import *
 from dtimer import *
+sys.path.append('./')
 from PopMenus import *
 from types import *  # This is required for the rightType function
 
@@ -211,7 +213,7 @@ def main(*args):
         s1.dread_restart1(s1.iur)
 
     # write reset file
-    s1.bwrite_restart1(s1.iurr, ntime)
+    # s1.bwrite_restart1(s1.iurr, ntime)
 
     # initialization time
     dtimer(dtime, itime, 1)
@@ -219,7 +221,7 @@ def main(*args):
     # start timing loop
     dtimer(dtime, ltime, -1)
 
-    print >> iuot, "program mbeps1"
+    print ("program mbeps1",file=iuot)
 
     """
     Initialize default windows
@@ -231,8 +233,8 @@ def main(*args):
     pc.updateSimInfo({"tend": in1.tend})    #End time of the simulation
     #
     # * * * start main iteration loop * * *
-    for ntime in xrange(nstart, nloop):
-        print >> iuot, "ntime = ", ntime
+    for ntime in range(nstart, nloop):
+        print ("ntime = ", ntime,file=iuot)
         curtime = ntime * in1.dt
         if ntime == nstart:
             pc.runOnce()
@@ -241,7 +243,7 @@ def main(*args):
         pc.fastForward()
 
         # debug reset
-        #  if (ntime==nloop/2):
+        #  if (ntime==int(nloop/2)):
         #     s1.bread_restart1(s1.iurr)
         #     s1.reset_diags1()
 
@@ -352,7 +354,7 @@ def main(*args):
                     irc[0] = 0
                 # Potential vs Time
                 potentialimage = numpy.append(potentialimage, s1.sfield[0:nx])
-                randim = scaleByColumn(numpy.reshape(potentialimage, (len(potentialimage)/nx, nx) ))
+                randim = scaleByColumn(numpy.reshape(potentialimage, (int(len(potentialimage)/nx), nx) ))
                 pc.showSimpleImage('POTENTIALvTIME', numpy.transpose(randim), "Time=" + str(ntime * in1.dt),
                     extent=(0, ntime*in1.dt, 0, nx), title="Potential vs Time", early=in1.ntp, norm=None)
 
@@ -372,7 +374,7 @@ def main(*args):
             it = int(ntime / in1.ntv)
             if (ntime == in1.ntv * it):
                 # updates ppart, kpic, fv, fvm, fvtm
-                s1.evelocity_diag1(s1.ppart, s1.kpic, s1.fv, s1.fvm, s1.fvtm)
+                s1.evelocity_diag1(s1.fv, s1.fe, s1.fvm, s1.fvtm, s1.wkt)
                 # display electron velocity distributions
                 if ((in1.ndv == 1) or (in1.ndv == 3)):
                     graf2.displayfv1(s1.fv, s1.fvm, 'ELECTRON VEL', ntime, in1.nmv, 1,
@@ -382,8 +384,7 @@ def main(*args):
                     irc[0] = 0
                 if (in1.movion == 1):
                     # updates pparti, kipic, fvi, fvmi, fvtmi
-                    s1.ivelocity_diag1(s1.pparti, s1.kipic, s1.fvi, s1.fvmi,
-                                       s1.fvtmi)
+                    s1.ivelocity_diag1(s1.fvi, s1.fei, s1.fvmi, s1.fvtmi, s1.wkt)
                     # display ion velocity distributions
                     if ((in1.ndv == 2) or (in1.ndv == 3)):
                         graf2.displayfv1(s1.fvi, s1.fvmi, 'ION VEL', ntime, in1.nmv, 1,
@@ -398,7 +399,7 @@ def main(*args):
             if (ntime == in1.ntt * it):
                 s1.traj_diag1(s1.ppart, s1.kpic, s1.partd, s1.fvtp, s1.fvmtp)
                 if (in1.nst == 3):
-                    print "Moments are ", s1.fvmtp
+                    print ("Moments are ", s1.fvmtp)
                     # display velocity distributions
                     graf2.displayfv1(s1.fvtp, s1.fvmtp, 'ELECTRON TRAJ', ntime, in1.nmv,
                                      1, irc, title='Electron Trajectory Velocity Histogram', early=in1.ntt)
@@ -444,7 +445,7 @@ def main(*args):
             # start running simulation backwards:
             # need to reverse time lag in leap-frog integration scheme
         if (in1.treverse == 1):
-            if (((ntime + 1) == (nloop / 2)) or ((ntime + 1) == nloop)):
+            if (((ntime + 1) == int(nloop / 2)) or ((ntime + 1) == nloop)):
                 s1.es_time_reverse1()
 
                 # energy diagnostic: updates wt
@@ -476,12 +477,12 @@ def main(*args):
 
     # * * * end main iteration loop * * *
 
-    print >> iuot
-    print >> iuot, "ntime, relativity = ", ntime, ",", in1.relativity
+    print (file=iuot)
+    print ("ntime, relativity = ",ntime,",",in1.relativity,file=iuot)
     if (in1.treverse == 1):
-        print >> iuot, "treverse = ", in1.treverse
+        print ("treverse = ",in1.treverse,file=iuot)
 
-    # print timing summaries
+    # print (timing summaries)
     s1.print_timings1(tinit, tloop, iuot)
 
     if ((in1.ntw > 0) or (in1.ntt > 0)):
@@ -501,11 +502,11 @@ def main(*args):
     # energy diagnostic
     if (in1.ntw > 0):
         ts = in1.t0
-        # display energy histories
+        # display energy histories)
         graf1.displayw1(s1.wt, ts, in1.dt * float(in1.ntw), s1.itw, irc)
         if (irc[0] == 1):
             exit(0)
-        # print energy summaries
+        # print (energy summaries)
         s1.print_energy1(s1.wt, iuot)
 
     # velocity diagnostic
@@ -548,7 +549,7 @@ def main(*args):
     s1.close_restart1()
     pc.wait(in1)
     # close output file
-    print >> iuot, " * * * q.e.d. * * *"
+    print (" * * * q.e.d. * * *",file=iuot)
     iuot.close()
     # close graphics device
     graf1.close_graphs()

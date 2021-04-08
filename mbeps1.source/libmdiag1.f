@@ -10,13 +10,21 @@
 !         and entropy, for segmented particle array
 ! VPDIST13 calculates 3 component velocity distribution, velocity moments,
 !          and entropy, for segmented particle array
+! VBPDIST13 calculates 3d velocity distribution and velocity moments for
+!           magnetized plasma, for segmented particle array
 ! ERPDIST1 calculates 1d energy distribution for relativistic particles
 ! ERPDIST13 calculates 1-2/2d energy distribution for relativistic
 !           particles
+! PVSDIST1 for 1d code, calculates 1d velocity distribution, in
+!          different regions of space, for segmented particle array
+! PVSDIST13 for 1-2/2d code, calculates 1d velocity distribution, in
+!           different regions of space, for segmented particle array
 ! VDIST1 calculates 1 component velocity distribution, velocity moments,
 !        and entropy for standard particle array
 ! VDIST13 calculates 3 component velocity distribution, velocity
 !         moments, and entropy.
+! VBDIST13 for 1-2/2d code, calculates 3d velocity distribution,
+!          and velocity moments for magnetized plasma
 ! PROFX13L calculates fluid moments from particle quantities: density,
 !           momentum, momentum flux, energy, energy flux, assumes
 !           particle positions and velocities at same time level
@@ -53,7 +61,8 @@
 ! STPTRAJ13 sets test charge distribution by setting a particle id
 !           in particle location 5 for 1-2/2d code
 ! PTRAJ1 copies tagged particles in ppart to array partt for 1d code
-! PTRAJ13 copies tagged particles in ppart to array partt for 1-2/2d code
+! PTRAJ13 copies tagged particles in ppart to array partt for 1-2/2d
+!         code
 ! FNPTRAJ1 finds how many tagged particles are in ppart for 1d code
 ! FNPTRAJ13 finds how many tagged particles are in ppart for 1-2/2d code
 ! STPBEAM1 for 1d code, marks beam particles by setting a particle id in
@@ -62,7 +71,7 @@
 !           id in particle location 5
 ! written by viktor k. decyk, ucla
 ! copyright 2016, regents of the university of california
-! update: december 8, 2017
+! update: february 4, 2021
 !-----------------------------------------------------------------------
       subroutine CSPECT1(fc,wm,pkw,t0,dt,nt,iw,modesx,ntd,iwd,modesxd)
 ! this subroutine performs frequency analysis of complex time series,
@@ -298,12 +307,12 @@
       subroutine VPDIST1(ppart,kpic,sfv,fvm,idimp,nppmx,mx1,np,nmv,nmvf)
 ! for 1d code, this subroutine calculates 1d velocity distribution,
 ! velocity moments, and entropy
-! particles stored segmented array
+! particles stored in segmented array
 ! input: all except fvm, output: sfv, fvm
 ! ppart(2,n,m) = velocity vx of particle n in tile m
 ! kpic = number of particles per tile
 ! sfv = distribution function particles in each velocity range in tile
-! maximum velocity (used for scaling) is contained in first element sfv.
+! maximum velocity (used for scaling) is contained in last element sfv.
 ! vdrift is contained in fvm(1)
 ! vth is contained in fvm(2)
 ! entropy is contained in fvm(3), defined to be:
@@ -312,7 +321,7 @@
 ! nppmx = maximum number of particles in tile
 ! mx1 = (system length in x direction - 1)/mx + 1
 ! np = number of particles
-! nmvf = dimension of fv
+! nmvf = dimension of sfv
 ! the number of velocity bins used is 2*nmv + 1, nmvf >= 2*nmv+2
       implicit none
       integer idimp, nppmx, mx1, np, nmv, nmvf
@@ -322,28 +331,29 @@
       integer kpic
       dimension kpic(mx1)
 ! local data
-      integer j, k, npp, nvx
+      integer j, k, nmv21, npp, nvx
       real anmv, svx, svxx, vx
       double precision sumvx, sumvx2, ssumvx, ssumvx2, anp, sum1
 ! velocity scaling, same scaling used for all tiles
+      nmv21 = 2*nmv + 1
       anmv = real(nmv)
-      svx = anmv/sfv(1,mx1+1)
+      svx = anmv/sfv(nmv21+1,mx1+1)
 ! normalization constant for entropy
       svxx = svx*real(mx1)
 ! zero out distribution
       do 20 k = 1, mx1+1
-      do 10 j = 2, nmvf
+      do 10 j = 1, nmv21
       sfv(j,k) = 0.0
    10 continue
    20 continue
 ! count particles in each velocity region
-      anmv = anmv + 2.5
+      anmv = anmv + 1.5
       sumvx = 0.0d0
       sumvx2 = 0.0d0
 ! loop over tiles
 !$OMP PARALLEL DO                                                       &
 !$OMP& PRIVATE(j,k,npp,nvx,vx,ssumvx,ssumvx2)                           &
-!$OMP& REDUCTION(+:sumvx) REDUCTION(+:sumvx2)
+!$OMP& REDUCTION(+:sumvx) REDUCTION(+:sumvx2) SCHEDULE(dynamic)
       do 40 k = 1, mx1
       npp = kpic(k)
       ssumvx = 0.0d0
@@ -354,7 +364,7 @@
       nvx = vx*svx + anmv
       ssumvx = ssumvx + vx
       ssumvx2 = ssumvx2 + vx*vx
-      if ((nvx.ge.2).and.(nvx.le.nmvf)) sfv(nvx,k) = sfv(nvx,k) + 1.0
+      if ((nvx.ge.1).and.(nvx.le.nmv21)) sfv(nvx,k) = sfv(nvx,k) + 1.0
    30 continue
 ! calculate global sums
       sumvx = sumvx + ssumvx
@@ -362,7 +372,7 @@
    40 continue
 !$OMP END PARALLEL DO
 ! calculate global distribution
-      do 60 j = 2, nmvf
+      do 60 j = 1, nmv21
       sum1 = 0.0d0
       do 50 k = 1, mx1
       sum1 = sum1 + sfv(j,k)
@@ -377,13 +387,13 @@
       fvm(2) = dsqrt(sumvx2*anp - sumvx**2)
 ! count number of particles in global distribution
       sumvx = 0.0d0
-      do 70 j = 2, nmvf
+      do 70 j = 1, nmv21
       sumvx = sumvx + sfv(j,mx1+1)
    70 continue
 ! calculate entropy
       sumvx2 = 0.0d0
       do 90 k = 1, mx1
-      do 80 j = 2, nmvf
+      do 80 j = 1, nmv21
       if (sfv(j,k).gt.0.0) then
          sumvx2 = sumvx2 + sfv(j,k)*dlog(dble(sfv(j,k)*svxx))
       endif
@@ -398,14 +408,14 @@
      &)
 ! for 1-2/2d code, this subroutine calculates 3d velocity distribution,
 ! velocity moments, and entropy
-! particles stored segmented array
+! particles stored in segmented array
 ! input: all except fvm, output: sfv, fvm
 ! ppart(2,n,m) = velocity vx of particle n in tile m
 ! ppart(3,n,m) = velocity vy of particle n in tile m
 ! ppart(4,n,m) = velocity vz of particle n in tile m
 ! kpic = number of particles per tile
 ! sfv = distribution function particles in each velocity range in tile
-! maximum velocity (used for scaling) is contained in first element sfv.
+! maximum velocity (used for scaling) is contained in last element sfv.
 ! vdrift for i-th dimension is contained in fvm(i,1)
 ! vth for i-th dimension is contained in fvm(i,2)
 ! entropy for i-th dimension is contained in fvm(i,3), defined to be:
@@ -415,7 +425,7 @@
 ! nppmx = maximum number of particles in tile
 ! mx1 = (system length in x direction - 1)/mx + 1
 ! np = number of particles
-! nmvf = dimension of fv
+! nmvf = dimension of sfv
 ! the number of velocity bins used is 2*nmv + 1, nmvf >= 2*nmv+2
       implicit none
       integer idimp, nppmx, mx1, np, nmv, nmvf
@@ -425,30 +435,31 @@
       integer kpic
       dimension kpic(mx1)
 ! local data
-      integer j, k, npp, nvx, nvy, nvz
+      integer j, k, nmv21, npp, nvx, nvy, nvz
       real anmv, svx, svy, svz, svxx, svyx, svzx, vx, vy, vz
       double precision sumvx, sumvy, sumvz, sumvx2, sumvy2, sumvz2, anp
       double precision ssumvx, ssumvy, ssumvz, ssumvx2, ssumvy2, ssumvz2
       double precision sum1, sum2, sum3
 ! velocity scaling, same scaling used for all tiles
+      nmv21 = 2*nmv + 1
       anmv = real(nmv)
-      svx = anmv/sfv(1,1,mx1+1)
-      svy = anmv/sfv(1,2,mx1+1)
-      svz = anmv/sfv(1,3,mx1+1)
+      svx = anmv/sfv(nmv21+1,1,mx1+1)
+      svy = anmv/sfv(nmv21+1,2,mx1+1)
+      svz = anmv/sfv(nmv21+1,3,mx1+1)
 ! normalization constant for entropy
       svxx = svx*real(mx1)
       svyx = svy*real(mx1)
       svzx = svz*real(mx1)
 ! zero out distribution
       do 20 k = 1, mx1+1
-      do 10 j = 2, nmvf
+      do 10 j = 1, nmv21
       sfv(j,1,k) = 0.0
       sfv(j,2,k) = 0.0
       sfv(j,3,k) = 0.0
    10 continue
    20 continue
 ! count particles in each velocity region
-      anmv = anmv + 2.5
+      anmv = anmv + 1.5
       sumvx = 0.0d0
       sumvy = 0.0d0
       sumvz = 0.0d0
@@ -460,7 +471,8 @@
 !$OMP& PRIVATE(j,k,npp,nvx,nvy,nvz,vx,vy,vz,ssumvx,ssumvy,ssumvz,       &
 !$OMP& ssumvx2,ssumvy2,ssumvz2)                                         &
 !$OMP& REDUCTION(+:sumvx) REDUCTION(+:sumvy) REDUCTION(+:sumvz)         &
-!$OMP& REDUCTION(+:sumvx2) REDUCTION(+:sumvy2) REDUCTION(+:sumvz2)
+!$OMP& REDUCTION(+:sumvx2) REDUCTION(+:sumvy2) REDUCTION(+:sumvz2)      &
+!$OMP& SCHEDULE(dynamic)
       do 40 k = 1, mx1
       npp = kpic(k)
       ssumvx = 0.0d0
@@ -475,17 +487,17 @@
       nvx = vx*svx + anmv
       ssumvx = ssumvx + vx
       ssumvx2 = ssumvx2 + vx*vx
-      if ((nvx.ge.2).and.(nvx.le.nmvf)) sfv(nvx,1,k) = sfv(nvx,1,k) + 1.0
+      if ((nvx.ge.1).and.(nvx.le.nmv21)) sfv(nvx,1,k) = sfv(nvx,1,k)+1.0
       vy = ppart(3,j,k)
       nvy = vy*svy + anmv
       ssumvy = ssumvy + vy
       ssumvy2 = ssumvy2 + vy*vy
-      if ((nvy.ge.2).and.(nvy.le.nmvf)) sfv(nvy,2,k) = sfv(nvy,2,k) + 1.0
+      if ((nvy.ge.1).and.(nvy.le.nmv21)) sfv(nvy,2,k) = sfv(nvy,2,k)+1.0
       vz = ppart(4,j,k)
       nvz = vz*svz + anmv
       ssumvz = ssumvz + vz
       ssumvz2 = ssumvz2 + vz*vz
-      if ((nvz.ge.2).and.(nvz.le.nmvf)) sfv(nvz,3,k) = sfv(nvz,3,k) + 1.0
+      if ((nvz.ge.1).and.(nvz.le.nmv21)) sfv(nvz,3,k) = sfv(nvz,3,k)+1.0
    30 continue
 ! calculate global sums
       sumvx = sumvx + ssumvx
@@ -497,7 +509,7 @@
    40 continue
 !$OMP END PARALLEL DO
 ! calculate global distribution
-      do 60 j = 2, nmvf
+      do 60 j = 1, nmv21
       sum1 = 0.0d0
       sum2 = 0.0d0
       sum3 = 0.0d0
@@ -526,7 +538,7 @@
       sumvx = 0.0d0
       sumvy = 0.0d0
       sumvz = 0.0d0
-      do 70 j = 2, nmvf
+      do 70 j = 1, nmv21
       sumvx = sumvx + sfv(j,1,mx1+1)
       sumvy = sumvy + sfv(j,2,mx1+1)
       sumvz = sumvz + sfv(j,3,mx1+1)
@@ -536,7 +548,7 @@
       sumvy2 = 0.0d0
       sumvz2 = 0.0d0
       do 90 k = 1, mx1
-      do 80 j = 2, nmvf
+      do 80 j = 1, nmv21
       if (sfv(j,1,k).gt.0.0) then
          sumvx2 = sumvx2 + sfv(j,1,k)*dlog(dble(sfv(j,1,k)*svxx))
       endif
@@ -557,22 +569,196 @@
       return
       end
 !-----------------------------------------------------------------------
+      subroutine VBPDIST13(ppart,kpic,sfv,fvm,omx,omy,omz,idimp,nppmx,  &
+     &mx1,np,nmv,nmvf)
+! for 1-2/2d code, this subroutine calculates 3d velocity distribution,
+! and velocity moments for magnetized plasma
+! rotating cartesian co-ordinates so that B points in the z direction.
+! particles stored in segmented array
+! input: all except fvm, output: sfv, fvm
+! ppart(2,n,m) = velocity vx of particle n in tile m
+! ppart(3,n,m) = velocity vy of particle n in tile m
+! ppart(4,n,m) = velocity vz of particle n in tile m
+! kpic = number of particles per tile
+! sfv = distribution function particles in each velocity range in tile
+! maximum velocity (used for scaling) is contained in last element sfv.
+! vdrift for i-th dimension is contained in fvm(i,1)
+! vth for i-th dimension is contained in fvm(i,2)
+! omx/omy/omz = magnetic field electron cyclotron frequency in x/y/z
+! idimp = size of phase space = 4
+! nppmx = maximum number of particles in tile
+! mx1 = (system length in x direction - 1)/mx + 1
+! np = number of particles
+! nmvf = dimension of sfv
+! the number of velocity bins used is 2*nmv + 1, nmvf >= 2*nmv+2
+      implicit none
+      integer idimp, nppmx, mx1, np, nmv, nmvf
+      real omx, omy, omz
+      real ppart, sfv, fvm
+      dimension ppart(idimp,nppmx,mx1)
+      dimension sfv(nmvf,3,mx1+1), fvm(3,2)
+      integer kpic
+      dimension kpic(mx1)
+! local data
+      integer j, k, nmv21, ndir, npp, nvx, nvz
+      real at1, at2, ox, oy, oz, px, py, pz, qx, qy, qz, vx, vy, vz
+      real anmv, svx, svz
+      double precision sumvx, sumvz, sumvx2, sumvz2, anp
+      double precision ssumvx, ssumvz, ssumvx2, ssumvz2
+      double precision sum1, sum3
+! find rotation to convert to cylindrical co-ordinates
+      at1 = sqrt(omx*omx + omy*omy + omz*omz)
+! no rotation if zero B field
+      if (at1.eq.0.0) then
+         ox = 0.0
+         oy = 0.0
+         oz = 1.0
+! create rotation vectors
+      else
+! first create unit vector in B direction
+         at1 = 1.0/at1
+         ox = omx*at1
+         oy = omy*at1
+         oz = omz*at1
+      endif
+! then create unit vector in first perpendicular direction
+! find direction with smallest component of B
+      ndir = 1
+      at1 = abs(omx)
+      at2 = abs(omy)
+      if (at2.le.at1) then
+         ndir = 2
+         at1 = at2
+      endif
+      if (abs(omz).lt.at1) ndir = 3
+! take the cross product of that direction with B
+! vpr1 = x cross B
+      if (ndir.eq.1) then
+         at1 = 1.0/sqrt(oy*oy + oz*oz)
+         px = 0.0
+         py = -oz*at1
+         pz = oy*at1
+! vpr1 = y cross B
+      else if (ndir.eq.2) then
+         at1 = 1.0/sqrt(ox*ox + oz*oz)
+         px = oz*at1
+         py = 0.0
+         pz = -ox*at1
+! vpr1 = z cross B
+      else if (ndir.eq.3) then
+         at1 = 1.0/sqrt(ox*ox + oy*oy)
+         px = -oy*at1
+         py = ox*at1
+         pz = 0.0
+      endif
+! finally create unit vector in second perpendicular direction
+! vpr2 = B cross vpr1
+      qx = oy*pz - oz*py
+      qy = oz*px - ox*pz
+      qz = ox*py - oy*px
+! velocity scaling, same scaling used for all tiles
+      nmv21 = 2*nmv + 1
+      anmv = real(nmv)
+      svx = anmv/sfv(nmv21+1,1,mx1+1)
+      svz = anmv/sfv(nmv21+1,2,mx1+1)
+! zero out distribution
+      do 20 k = 1, mx1+1
+      do 10 j = 1, nmv21
+      sfv(j,1,k) = 0.0
+      sfv(j,2,k) = 0.0
+   10 continue
+   20 continue
+! count particles in each velocity region
+      anmv = anmv + 1.5
+      sumvx = 0.0d0
+      sumvz = 0.0d0
+      sumvx2 = 0.0d0
+      sumvz2 = 0.0d0
+! loop over tiles
+!$OMP PARALLEL DO                                                       &
+!$OMP& PRIVATE(j,k,npp,nvx,nvz,vx,vy,vz,at1,at2,ssumvx,ssumvz,ssumvx2,  &
+!$OMP& ssumvz2) REDUCTION(+:sumvx) REDUCTION(+:sumvz)                   &
+!$OMP& REDUCTION(+:sumvx2) REDUCTION(+:sumvz2) SCHEDULE(dynamic)
+      do 40 k = 1, mx1
+      npp = kpic(k)
+      ssumvx = 0.0d0
+      ssumvz = 0.0d0
+      ssumvx2 = 0.0d0
+      ssumvz2 = 0.0d0
+! loop over particles in tile
+      do 30 j = 1, npp
+      vx = ppart(2,j,k)
+      vy = ppart(3,j,k)
+      vz = ppart(4,j,k)
+! vperp1 co-ordinate
+      at1 = vx*px + vy*py + vz*pz
+! vperp2 co-ordinate
+      at2 = vx*qx + vy*qy + vz*qz
+! vparallel co-ordinate
+      vz = vx*ox + vy*oy + vz*oz
+      vx = sqrt(at1*at1 + at2*at2)
+      nvx = vx*svx + anmv
+      ssumvx = ssumvx + vx
+      ssumvx2 = ssumvx2 + vx*vx
+      if ((nvx.ge.1).and.(nvx.le.nmv21)) sfv(nvx,1,k) = sfv(nvx,1,k)+1.0
+      nvz = vz*svz + anmv
+      ssumvz = ssumvz + vz
+      ssumvz2 = ssumvz2 + vz*vz
+      if ((nvz.ge.1).and.(nvz.le.nmv21)) sfv(nvz,2,k) = sfv(nvz,2,k)+1.0
+   30 continue
+! calculate global sums
+      sumvx = sumvx + ssumvx
+      sumvz = sumvz + ssumvz
+      sumvx2 = sumvx2 + ssumvx2
+      sumvz2 = sumvz2 + ssumvz2
+   40 continue
+!$OMP END PARALLEL DO
+! calculate global distribution
+      do 60 j = 1, nmv21
+      sum1 = 0.0d0
+      sum3 = 0.0d0
+      do 50 k = 1, mx1
+      sum1 = sum1 + sfv(j,1,k)
+      sum3 = sum3 + sfv(j,2,k)
+   50 continue
+      sfv(j,1,mx1+1) = sum1
+      sfv(j,2,mx1+1) = sum3
+   60 continue
+! calculate global velocity moments
+      anp = 0.0d0
+      if (np.gt.0) anp = 1.0d0/dble(np)
+      sumvx = sumvx*anp
+      sumvz = sumvz*anp
+      fvm(1,1) = sumvx
+      fvm(2,1) = sumvz
+      fvm(1,2) = dsqrt(sumvx2*anp - sumvx**2)
+      fvm(2,2) = dsqrt(sumvz2*anp - sumvz**2)
+      return
+      end
+!-----------------------------------------------------------------------
       subroutine ERPDIST1(ppart,kpic,sfv,ci,wk,idimp,nppmx,mx1,nmv,nmvf)
 ! for 1d code, this subroutine calculates 1d energy distribution
 ! for relativistic particles
-! particles stored segmented array
+! the function calculated is of the form g*exp(-e/vth**2), where
+! e = (gamma-1)*(c*c) is the kinetic energy per mass, and where
+! vth = sqrt(KT/m).  Note vth is not a physical velocity and can be > c
+! gamma = sqrt(1 + (p*p)/(c*c)), where p = is the momentum per mass
+! g = 1/(de/dp) = gamma/p
+! one can express this quantity g as a function of e as follows:
+! e = (p*p)/(gamma+1) => p = sqrt((gamma+1)*e), and gamma = 1 + e/(c*c)
+! particles stored in segmented array
 ! input: all except wk, output: sfv, wk
 ! ppart(2,n,m) = momentum px of particle n in tile m
 ! kpic = number of particles per tile
 ! sfv = distribution function particles in each velocity range in tile
-! maximum energy (used for scaling) is contained in first element sfv.
+! maximum energy (used for scaling) is contained in last element sfv.
 ! ci = reciprocal of velocity of light
 ! wk = total energy is contained in distribution
 ! idimp = size of phase space = 2
 ! nppmx = maximum number of particles in tile
 ! mx1 = (system length in x direction - 1)/mx + 1
-! nmvf = dimension of fv
-! the number of velocity bins used is 2*nmv + 1, nmvf >= 2*nmv+2
+! nmvf = dimension of sfv
+! the number of energy bins used is 2*nmv + 1, nmvf >= 2*nmv+2
       implicit none
       integer idimp, nppmx, mx1, nmv, nmvf
       real ci, wk
@@ -582,24 +768,26 @@
       integer kpic
       dimension kpic(mx1)
 ! local data
-      integer j, k, npp, nvx
+      integer j, k, nmv21, npp, nvx
       real ci2, anmv, svx, px, p2
       double precision sumpx, ssumpx, sum1
       ci2 = ci*ci
-! velocity scaling, same scaling used for all tiles
+! energy scaling, same scaling used for all tiles
+      nmv21 = 2*nmv + 1
       anmv = real(nmv)
-      svx = anmv/sfv(1,mx1+1)
+      svx = anmv/sfv(nmv21+1,mx1+1)
 ! zero out distribution
       do 20 k = 1, mx1+1
-      do 10 j = 2, nmvf
+      do 10 j = 1, nmv21
       sfv(j,k) = 0.0
    10 continue
    20 continue
-! count particles in each velocity region
-      anmv = 2.0
+! count particles in each energy region
+      anmv = 1.0
       sumpx = 0.0d0
 ! loop over tiles
-!$OMP PARALLEL DO PRIVATE(j,k,npp,nvx,px,p2,ssumpx) REDUCTION(+:sumpx) 
+!$OMP PARALLEL DO PRIVATE(j,k,npp,nvx,px,p2,ssumpx) REDUCTION(+:sumpx)  &
+!$OMP& SCHEDULE(dynamic)
       do 40 k = 1, mx1
       npp = kpic(k)
       ssumpx = 0.0d0
@@ -610,14 +798,14 @@
       px = p2/(1.0 + sqrt(1.0 + p2*ci2))
       nvx = px*svx + anmv
       ssumpx = ssumpx + px
-      if ((nvx.ge.2).and.(nvx.le.nmvf)) sfv(nvx,k) = sfv(nvx,k) + 1.0
+      if ((nvx.ge.1).and.(nvx.le.nmv21)) sfv(nvx,k) = sfv(nvx,k) + 1.0
    30 continue
 ! calculate global sums
       sumpx = sumpx + ssumpx
    40 continue
 !$OMP END PARALLEL DO
 ! calculate global distribution
-      do 60 j = 2, nmvf
+      do 60 j = 1, nmv21
       sum1 = 0.0d0
       do 50 k = 1, mx1
       sum1 = sum1 + sfv(j,k)
@@ -633,49 +821,58 @@
      &)
 ! for 1-2/2d code, this subroutine calculates 3d energy distribution,
 ! for relativistic particles
-! particles stored segmented array
+! the function calculated is of the form g*exp(-e/vth**2), where
+! e = (gamma-1)*(c*c) is the kinetic energy per mass, and where
+! vth = sqrt(KT/m).  Note vth is not a physical velocity and can be > c
+! gamma = sqrt(1 + (p*p)/(c*c)), where p = is the momentum per mass
+! g = p*p/(de/dp) = p*gamma
+! one can express this quantity g as a function of e as follows:
+! e = (p*p)/(gamma+1) => p = sqrt((gamma+1)*e), and gamma = 1 + e/(c*c)
+! particles stored in segmented array
 ! input: all except wk, output: sfv, wk
 ! ppart(2,n,m) = momentum px of particle n in tile m
 ! ppart(3,n,m) = momentum py of particle n in tile m
 ! ppart(4,n,m) = momentum pz of particle n in tile m
 ! kpic = number of particles per tile
 ! sfv = distribution function particles in each velocity range in tile
-! maximum energy (used for scaling) is contained in first element sfv.
+! maximum energy (used for scaling) is contained in last element sfv.
 ! ci = reciprocal of velocity of light
 ! wk = total energy is contained in distribution
 ! idimp = size of phase space = 4
 ! nppmx = maximum number of particles in tile
 ! mx1 = (system length in x direction - 1)/mx + 1
-! nmvf = dimension of fv
-! the number of velocity bins used is 2*nmv + 1, nmvf >= 2*nmv+2
+! nmvf = dimension of sfv
+! the number of energy bins used is 2*nmv + 1, nmvf >= 2*nmv+2
       implicit none
       integer idimp, nppmx, mx1, nmv, nmvf
       real ci, wk
       real ppart, sfv
       dimension ppart(idimp,nppmx,mx1)
-      dimension sfv(nmvf,mx1+1)
+      dimension sfv(nmvf,3,mx1+1)
       integer kpic
       dimension kpic(mx1)
 ! local data
-      integer j, k, npp, nvx
+      integer j, k, nmv21, npp, nvx
       real ci2, anmv, svx, px, py, pz, p2
       double precision sumpx, ssumpx, sum1
       ci2 = ci*ci
-! velocity scaling, same scaling used for all tiles
+! energy scaling, same scaling used for all tiles
+      nmv21 = 2*nmv + 1
       anmv = real(nmv)
-      svx = anmv/sfv(1,mx1+1)
+      svx = anmv/sfv(nmv21+1,1,mx1+1)
 ! zero out distribution
       do 20 k = 1, mx1+1
-      do 10 j = 2, nmvf
-      sfv(j,k) = 0.0
+      do 10 j = 1, nmv21
+      sfv(j,1,k) = 0.0
    10 continue
    20 continue
-! count particles in each velocity region
-      anmv = 2.0
+! count particles in each energy region
+      anmv = 1.0
       sumpx = 0.0d0
 ! loop over tiles
 !$OMP PARALLEL DO                                                       &
-!$OMP& PRIVATE(j,k,npp,nvx,px,py,pz,p2,ssumpx) REDUCTION(+:sumpx)     
+!$OMP& PRIVATE(j,k,npp,nvx,px,py,pz,p2,ssumpx) REDUCTION(+:sumpx)       &
+!$OMP& SCHEDULE(dynamic)
       do 40 k = 1, mx1
       npp = kpic(k)
       ssumpx = 0.0d0
@@ -688,22 +885,158 @@
       px = p2/(1.0 + sqrt(1.0 + p2*ci2))
       nvx = px*svx + anmv
       ssumpx = ssumpx + px
-      if ((nvx.ge.2).and.(nvx.le.nmvf)) sfv(nvx,k) = sfv(nvx,k) + 1.0
+      if ((nvx.ge.1).and.(nvx.le.nmv21)) sfv(nvx,1,k) = sfv(nvx,1,k)+1.0
    30 continue
 ! calculate global sums
       sumpx = sumpx + ssumpx
    40 continue
 !$OMP END PARALLEL DO
 ! calculate global distribution
-      do 60 j = 2, nmvf
+      do 60 j = 1, nmv21
       sum1 = 0.0d0
       do 50 k = 1, mx1
-      sum1 = sum1 + sfv(j,k)
+      sum1 = sum1 + sfv(j,1,k)
    50 continue
-      sfv(j,mx1+1) = sum1
+      sfv(j,1,mx1+1) = sum1
    60 continue
 ! return energy
       wk = sumpx
+      return
+      end
+!-----------------------------------------------------------------------
+      subroutine PVSDIST1(ppart,kpic,fvs,nmv,mvx,nxb,idimp,nppmx,mx1,   &
+     &nmvf)
+! for 1d code, this subroutine calculates 1d velocity distribution, in
+! different regions of space, particles stored in segmented array
+! input: all except fvs, output: fvs
+! ppart(1,n,m) = position x of particle n in tile m
+! ppart(2,n,m) = velocity vx of particle n in tile m
+! kpic = number of particles per tile
+! fvs = spatially resolved distribution function, number of particles in
+! each velocity and spatial range.  maximum velocity (used for scaling)
+! is contained in last element of first dimension of fvs
+! nmv = number of segments in v for velocity distribution
+! mvx = number of grids in x for phase space aggregation
+! nxb = number of segments in x for velocity distribution
+! idimp = size of phase space = 2
+! nppmx = maximum number of particles in tile
+! mx1 = (system length in x direction - 1)/mx+1
+! nmvf = first dimension of fvs
+! the number of velocity bins used is 2*nmv + 1, nmvf >= 2*nmv+2
+      implicit none
+      integer nmv, mvx, nxb, idimp, nppmx, mx1, nmvf
+      real ppart, fvs
+      dimension ppart(idimp,nppmx,mx1)
+      dimension fvs(nmvf,nxb)
+      integer kpic
+      dimension kpic(mx1)
+! local data
+      integer j, k, npp, nmv21, nn, nvx
+      real anmv, svx, at1
+! velocity scaling, same scaling used for all tiles
+      nmv21 = 2*nmv + 1
+      anmv = real(nmv)
+      svx = anmv/fvs(nmv21+1,1)
+! spatial scaling
+      at1 = 1.0/real(mvx)
+! zero out distribution
+      do 20 nn = 1, nxb
+      do 10 j = 1, nmv21
+      fvs(j,nn) = 0.0
+   10 continue
+   20 continue
+! count particles in each velocity region
+      anmv = anmv + 1.5
+! loop over tiles
+!$OMP PARALLEL DO PRIVATE(j,k,npp,nn,nvx) SCHEDULE(dynamic)
+      do 40 k = 1, mx1
+      npp = kpic(k)
+      do 30 j = 1, npp
+      nn = ppart(1,j,k)*at1 + 1.0
+      nvx = ppart(2,j,k)*svx + anmv
+      if ((nvx.ge.1).and.(nvx.le.nmv21)) then
+!$OMP ATOMIC
+         fvs(nvx,nn) = fvs(nvx,nn) + 1.0
+      endif
+   30 continue
+   40 continue
+!$OMP END PARALLEL DO
+      return
+      end
+!-----------------------------------------------------------------------
+      subroutine PVSDIST13(ppart,kpic,fvs,nmv,mvx,nxb,idimp,nppmx,mx1,  &
+     &nmvf)
+! for 1-2/2d code, this subroutine calculates 3d velocity distribution,
+! in different regions of space, particles stored in segmented array
+! input: all except fvs, output: fvs
+! ppart(1,n,m) = position x of particle n in tile m
+! ppart(2,n,m) = velocity vx of particle n in tile m
+! ppart(3,n,m) = velocity vy of particle n in tile m
+! ppart(4,n,m) = velocity vz of particle n in tile m
+! kpic = number of particles per tile
+! fvs = spatially resolved distribution function, number of particles in
+! each velocity and spatial range.  maximum velocity (used for scaling)
+! is contained in last element of last dimension of fvs
+! nmv = number of segments in v for velocity distribution
+! mvx = number of grids in x for phase space aggregation
+! nxb = number of segments in x for velocity distribution
+! idimp = size of phase space = 4
+! nppmx = maximum number of particles in tile
+! mx1 = (system length in x direction - 1)/mx+1
+! nmvf = first dimension of fvs
+! the number of velocity bins used is 2*nmv + 1, nmvf >= 2*nmv+2
+      implicit none
+      integer nmv, mvx, nxb, idimp, nppmx, mx1, nmvf
+      real ppart, fvs
+      dimension ppart(idimp,nppmx,mx1)
+      dimension fvs(nmvf,3,nxb)
+      integer kpic
+      dimension kpic(mx1)
+! local data
+      integer j, k, npp, nmv21, nn, nvx, nvy, nvz
+      real anmv, svx, svy, svz, at1
+! velocity scaling, same scaling used for all tiles
+      nmv21 = 2*nmv + 1
+      anmv = real(nmv)
+      svx = anmv/fvs(nmv21+1,1,1)
+      svy = anmv/fvs(nmv21+1,2,1)
+      svz = anmv/fvs(nmv21+1,3,1)
+! spatial scaling
+      at1 = 1.0/real(mvx)
+! zero out distribution
+      do 20 nn = 1, nxb
+      do 10 j = 1, nmv21
+      fvs(j,1,nn) = 0.0
+      fvs(j,2,nn) = 0.0
+      fvs(j,3,nn) = 0.0
+   10 continue
+   20 continue
+! count particles in each velocity region
+      anmv = anmv + 1.5
+! loop over tiles
+!$OMP PARALLEL DO PRIVATE(j,k,npp,nn,nvx,nvy,nvz) SCHEDULE(dynamic)
+      do 40 k = 1, mx1
+      npp = kpic(k)
+      do 30 j = 1, npp
+      nn = ppart(1,j,k)*at1 + 1.0
+      nvx = ppart(2,j,k)*svx + anmv
+      nvy = ppart(3,j,k)*svy + anmv
+      nvz = ppart(4,j,k)*svz + anmv
+      if ((nvx.ge.1).and.(nvx.le.nmv21)) then
+!$OMP ATOMIC
+         fvs(nvx,1,nn) = fvs(nvx,1,nn) + 1.0
+      endif
+      if ((nvy.ge.1).and.(nvy.le.nmv21)) then
+!$OMP ATOMIC
+         fvs(nvy,2,nn) = fvs(nvy,2,nn) + 1.0
+      endif
+      if ((nvz.ge.1).and.(nvz.le.nmv21)) then
+!$OMP ATOMIC
+         fvs(nvz,3,nn) = fvs(nvz,3,nn) + 1.0
+      endif
+   30 continue
+   40 continue
+!$OMP END PARALLEL DO
       return
       end
 !-----------------------------------------------------------------------
@@ -713,7 +1046,7 @@
 ! input: all except fvm, output: fv, fvm
 ! part(2,n) = velocity vx of particle n
 ! fv = distribution function, number of particles in each velocity range
-! maximum velocity (used for scaling) is contained in first element fv.
+! maximum velocity (used for scaling) contained in last element of fv.
 ! vdrift is contained in fvm(1)
 ! vth is contained in fvm(2)
 ! entropy is contained in fvm(3), defined to be:
@@ -721,6 +1054,7 @@
 ! is uniform in space
 ! idimp = size of phase space = 2
 ! np = number of particles
+! nmvf = dimension of fv
 ! the number of velocity bins used is 2*nmv + 1, nmvf >= 2*nmv+2
       implicit none
       integer idimp, np, nmv, nmvf
@@ -729,22 +1063,23 @@
 ! local data
       double precision sumvx, sumvx2, anp
       real anmv, svx
-      integer j, nvx
+      integer j, nmv21, nvx
+      nmv21 = 2*nmv + 1
       anmv = real(nmv)
-      svx = anmv/fv(1)
+      svx = anmv/fv(nmv21+1)
 ! zero out distribution
-      do 10 j = 2, nmvf
+      do 10 j = 1, nmv21
       fv(j) = 0.0
    10 continue
 ! count particles in each velocity region
-      anmv = anmv + 2.5
+      anmv = anmv + 1.5
       sumvx = 0.0d0
       sumvx2 = 0.0d0
       do 20 j = 1, np
       nvx = part(2,j)*svx + anmv
       sumvx = sumvx + part(2,j)
       sumvx2 = sumvx2 + part(2,j)**2
-      if ((nvx.ge.2).and.(nvx.le.nmvf)) fv(nvx) = fv(nvx) + 1.0
+      if ((nvx.ge.1).and.(nvx.le.nmv21)) fv(nvx) = fv(nvx) + 1.0
    20 continue
 ! calculate velocity moments
       anp = 1.0d0/dble(np)
@@ -754,7 +1089,7 @@
 ! calculate entropy
       sumvx = 0.0d0
       sumvx2 = 0.0d0
-      do 30 j = 2, nmvf
+      do 30 j = 1, nmv21
       if (fv(j).gt.0.0) then
          sumvx = sumvx + fv(j)
          sumvx2 = sumvx2 + fv(j)*dlog(dble(fv(j)*svx))
@@ -773,7 +1108,7 @@
 ! part(3,n) = velocity vy of particle n
 ! part(4,n) = velocity vz of particle n
 ! fv = distribution function, number of particles in each velocity range
-! maximum velocity (used for scaling) is contained in first element fv.
+! maximum velocity (used for scaling) contained in last element of fv.
 ! vdrift for i-th dimension is contained in fvm(i,1)
 ! vth for i-th dimension is contained in fvm(i,2)
 ! entropy for i-th dimension is contained in fvm(i,3), defined to be:
@@ -782,6 +1117,7 @@
 ! independent.
 ! idimp = size of phase space = 4
 ! np = number of particles
+! nmvf = dimension of fv
 ! the number of velocity bins used is 2*nmv + 1, nmvf >= 2*nmv+2
       implicit none
       integer idimp, np, nmv, nmvf
@@ -790,19 +1126,20 @@
 ! local data
       double precision sumvx, sumvy, sumvz, sumvx2, sumvy2, sumvz2, anp
       real anmv, svx, svy, svz
-      integer j, nvx, nvy, nvz
+      integer j, nmv21, nvx, nvy, nvz
+      nmv21 = 2*nmv + 1
       anmv = real(nmv)
-      svx = anmv/fv(1,1)
-      svy = anmv/fv(1,2)
-      svz = anmv/fv(1,3)
+      svx = anmv/fv(nmv21+1,1)
+      svy = anmv/fv(nmv21+1,2)
+      svz = anmv/fv(nmv21+1,3)
 ! zero out distribution
-      do 10 j = 2, nmvf
+      do 10 j = 1, nmv21
       fv(j,1) = 0.0
       fv(j,2) = 0.0
       fv(j,3) = 0.0
    10 continue
 ! count particles in each velocity region
-      anmv = anmv + 2.5
+      anmv = anmv + 1.5
       sumvx = 0.0d0
       sumvy = 0.0d0
       sumvz = 0.0d0
@@ -819,9 +1156,9 @@
       nvz = part(4,j)*svz + anmv
       sumvz = sumvz + part(4,j)
       sumvz2 = sumvz2 + part(4,j)**2
-      if ((nvx.ge.2).and.(nvx.le.nmvf)) fv(nvx,1) = fv(nvx,1) + 1.0
-      if ((nvy.ge.2).and.(nvy.le.nmvf)) fv(nvy,2) = fv(nvy,2) + 1.0
-      if ((nvz.ge.2).and.(nvz.le.nmvf)) fv(nvz,3) = fv(nvz,3) + 1.0
+      if ((nvx.ge.1).and.(nvx.le.nmv21)) fv(nvx,1) = fv(nvx,1) + 1.0
+      if ((nvy.ge.1).and.(nvy.le.nmv21)) fv(nvy,2) = fv(nvy,2) + 1.0
+      if ((nvz.ge.1).and.(nvz.le.nmv21)) fv(nvz,3) = fv(nvz,3) + 1.0
    20 continue
 ! calculate velocity moments
       anp = 1.0d0/dble(np)
@@ -841,7 +1178,7 @@
       sumvx2 = 0.0d0
       sumvy2 = 0.0d0
       sumvz2 = 0.0d0
-      do 30 j = 2, nmvf
+      do 30 j = 1, nmv21
       if (fv(j,1).gt.0.0) then
          sumvx = sumvx + fv(j,1)
          sumvx2 = sumvx2 + fv(j,1)*dlog(dble(fv(j,1)*svx))
@@ -864,6 +1201,130 @@
       return
       end
 !-----------------------------------------------------------------------
+      subroutine VBDIST13(part,fv,fvm,omx,omy,omz,idimp,np,nmv,nmvf)
+! for 1-2/2d code, this subroutine calculates 3d velocity distribution,
+! and velocity moments for magnetized plasma
+! rotating cartesian co-ordinates so that B points in the z direction.
+! input: all except fvm, output: fv, fvm
+! part(2,n) = velocity vx of particle n
+! part(3,n) = velocity vy of particle n
+! part(4,n) = velocity vz of particle n
+! fv = distribution function, number of particles in each velocity range
+! maximum velocity (used for scaling) contained in last element of fv.
+! vdrift for i-th dimension is contained in fvm(i,1)
+! vth for i-th dimension is contained in fvm(i,2)
+! omx/omy/omz = magnetic field electron cyclotron frequency in x/y/z 
+! idimp = size of phase space = 4
+! np = number of particles
+! nmvf = dimension of fv
+! the number of velocity bins used is 2*nmv + 1, nmvf >= 2*nmv+2
+      implicit none
+      integer idimp, np, nmv, nmvf
+      real omx, omy, omz
+      real part, fv, fvm
+      dimension part(idimp,np), fv(nmvf,2), fvm(3,2)
+! local data
+      integer j, nmv21, ndir, nvx, nvz
+      real at1, at2, ox, oy, oz, px, py, pz, qx, qy, qz, vx, vy, vz
+      real anmv, svx, svz
+      double precision sumvx, sumvz, sumvx2, sumvz2, anp
+! find rotation to convert to cylindrical co-ordinates
+      at1 = sqrt(omx*omx + omy*omy + omz*omz)
+! no rotation if zero B field
+      if (at1.eq.0.0) then
+         ox = 0.0
+         oy = 0.0
+         oz = 1.0
+! create rotation vectors
+      else
+! first create unit vector in B direction
+         at1 = 1.0/at1
+         ox = omx*at1
+         oy = omy*at1
+         oz = omz*at1
+      endif
+! then create unit vector in first perpendicular direction
+! find direction with smallest component of B
+      ndir = 1
+      at1 = abs(omx)
+      at2 = abs(omy)
+      if (at2.le.at1) then
+         ndir = 2
+         at1 = at2
+      endif
+      if (abs(omz).lt.at1) ndir = 3
+! take the cross product of that direction with B
+! vpr1 = x cross B
+      if (ndir.eq.1) then
+         at1 = 1.0/sqrt(oy*oy + oz*oz)
+         px = 0.0
+         py = -oz*at1
+         pz = oy*at1
+! vpr1 = y cross B
+      else if (ndir.eq.2) then
+         at1 = 1.0/sqrt(ox*ox + oz*oz)
+         px = oz*at1
+         py = 0.0
+         pz = -ox*at1
+! vpr1 = z cross B
+      else if (ndir.eq.3) then
+         at1 = 1.0/sqrt(ox*ox + oy*oy)
+         px = -oy*at1
+         py = ox*at1
+         pz = 0.0
+      endif
+! finally create unit vector in second perpendicular direction
+! vpr2 = B cross vpr1
+      qx = oy*pz - oz*py
+      qy = oz*px - ox*pz
+      qz = ox*py - oy*px
+! velocity scaling
+      nmv21 = 2*nmv + 1
+      anmv = real(nmv)
+      svx = anmv/fv(nmv21+1,1)
+      svz = anmv/fv(nmv21+1,2)
+! zero out distribution
+      do 10 j = 1, nmv21
+      fv(j,1) = 0.0
+      fv(j,2) = 0.0
+   10 continue
+! count particles in each velocity region
+      anmv = anmv + 1.5
+      sumvx = 0.0d0
+      sumvz = 0.0d0
+      sumvx2 = 0.0d0
+      sumvz2 = 0.0d0
+      do 20 j = 1, np
+      vx = part(2,j)
+      vy = part(3,j)
+      vz = part(4,j)
+! vperp1 co-ordinate
+      at1 = vx*px + vy*py + vz*pz
+! vperp2 co-ordinate
+      at2 = vx*qx + vy*qy + vz*qz
+! vparallel co-ordinate
+      vz = vx*ox + vy*oy + vz*oz
+      vx = sqrt(at1*at1 + at2*at2)
+      nvx = vx*svx + anmv
+      sumvx = sumvx + vx
+      sumvx2 = sumvx2 + vx**2
+      nvz = vz*svz + anmv
+      sumvz = sumvz + vz
+      sumvz2 = sumvz2 + vz**2
+      if ((nvx.ge.1).and.(nvx.le.nmv21)) fv(nvx,1) = fv(nvx,1) + 1.0
+      if ((nvz.ge.1).and.(nvz.le.nmv21)) fv(nvz,2) = fv(nvz,2) + 1.0
+   20 continue
+! calculate velocity moments
+      anp = 1.0d0/dble(np)
+      sumvx = sumvx*anp
+      fvm(1,1) = sumvx
+      fvm(1,2) = dsqrt(sumvx2*anp - sumvx**2)
+      sumvz = sumvz*anp
+      fvm(2,1) = sumvz
+      fvm(2,2) = dsqrt(sumvz2*anp - sumvz**2)
+      return
+      end
+!-----------------------------------------------------------------------
       subroutine PROFX13L(ppart,fms,kpic,nppmx,idimp,npro,mx,nprd,nxv,  &
      &mx1)
 ! for 1-2/2d code, this subroutine calculates fluid moments from
@@ -873,7 +1334,7 @@
 ! using first-order linear interpolation
 ! OpenMP version using guard cells
 ! data deposited in tiles
-! particles stored segmented array
+! particles stored in segmented array
 ! 72 flops/particle, 32 loads, 28 stores
 ! input: all, output: ppart, fms
 ! fluid moments are approximated by values at the nearest grid points
@@ -929,7 +1390,8 @@
 !     if (mx.ge.MXV) return
 ! loop over tiles
 !$OMP PARALLEL DO                                                       &
-!$OMP& PRIVATE(j,k,ii,noff,npp,nn,x,w,dxp,amx,dx,vx,vy,vz,sfms,sg)
+!$OMP& PRIVATE(j,k,ii,noff,npp,nn,x,w,dxp,amx,dx,vx,vy,vz,sfms,sg)      &
+!$OMP& SCHEDULE(dynamic)
       do 90 k = 1, mx1
       noff = mx*(k - 1)
       npp = kpic(k)
@@ -1010,7 +1472,7 @@
 ! using first-order linear interpolation
 ! OpenMP version using guard cells
 ! data deposited in tiles
-! particles stored segmented array
+! particles stored in segmented array
 ! 81 flops/particle, 2 divides, 1 sqrt, 32 loads, 28 stores
 ! input: all, output: ppart, fms
 ! fluid moments are approximated by values at the nearest grid points
@@ -1071,7 +1533,8 @@
 !     if (mx.ge.MXV) return
 ! loop over tiles
 !$OMP PARALLEL DO                                                       &
-!$OMP& PRIVATE(j,k,ii,noff,npp,nn,x,w,dxp,amx,vx,vy,vz,p2,gami,sfms,sg)
+!$OMP& PRIVATE(j,k,ii,noff,npp,nn,x,w,dxp,amx,vx,vy,vz,p2,gami,sfms,sg) &
+!$OMP& SCHEDULE(dynamic)
       do 90 k = 1, mx1
       noff = mx*(k - 1)
       npp = kpic(k)
@@ -1153,7 +1616,7 @@
 ! using first-order linear interpolation
 ! OpenMP version using guard cells
 ! data deposited in tiles
-! particles stored segmented array
+! particles stored in segmented array
 ! 27 flops/particle, 12 loads, 10 stores
 ! input: all, output: ppart, fms
 ! fluid moments are approximated by values at the nearest grid points
@@ -1207,7 +1670,8 @@
 !     if (mx.ge.MXV) return
 ! loop over tiles
 !$OMP PARALLEL DO                                                       &
-!$OMP& PRIVATE(j,k,ii,noff,npp,nn,x,w,dxp,amx,vx,sfms,sg)
+!$OMP& PRIVATE(j,k,ii,noff,npp,nn,x,w,dxp,amx,vx,sfms,sg)               &
+!$OMP& SCHEDULE(dynamic)
       do 90 k = 1, mx1
       noff = mx*(k - 1)
       npp = kpic(k)
@@ -1274,7 +1738,7 @@
 ! using first-order linear interpolation
 ! OpenMP version using guard cells
 ! data deposited in tiles
-! particles stored segmented array
+! particles stored in segmented array
 ! 32 flops/particle, 2 divides, 1 sqrt, 12 loads, 10 stores
 ! input: all, output: ppart, fms
 ! fluid moments are approximated by values at the nearest grid points
@@ -1332,7 +1796,8 @@
 !     if (mx.ge.MXV) return
 ! loop over tiles
 !$OMP PARALLEL DO                                                       &
-!$OMP& PRIVATE(j,k,ii,noff,npp,nn,x,w,dxp,amx,vx,p2,gami,sfms,sg)
+!$OMP& PRIVATE(j,k,ii,noff,npp,nn,x,w,dxp,amx,vx,p2,gami,sfms,sg)       &
+!$OMP& SCHEDULE(dynamic)
       do 90 k = 1, mx1
       noff = mx*(k - 1)
       npp = kpic(k)
@@ -1401,7 +1866,7 @@
 ! using first-order linear interpolation.
 ! OpenMP version using guard cells
 ! data deposited in tiles
-! particles stored segmented array
+! particles stored in segmented array
 ! 32 flops/particle, 14 loads, 10 stores, if all profiles calculated
 ! input: all, output: fms
 ! fluid moments are approximated by values at the nearest grid points
@@ -1469,7 +1934,8 @@
 !     if ((mx.ge.MXV).or.(my.ge.MYV)) return
 ! loop over tiles
 !$OMP PARALLEL DO                                                       &
-!$OMP& PRIVATE(j,k,ii,noff,npp,nn,x,w,dxp,amx,dx,vx,sfx,sfms,sg)
+!$OMP& PRIVATE(j,k,ii,noff,npp,nn,x,w,dxp,amx,dx,vx,sfx,sfms,sg)        &
+!$OMP& SCHEDULE(dynamic)
       do 100 k = 1, mx1
       noff = mx*(k - 1)
       npp = kpic(k)
@@ -1545,7 +2011,7 @@
 ! using first-order linear interpolation.
 ! OpenMP version using guard cells
 ! data deposited in tiles
-! particles stored segmented array
+! particles stored in segmented array
 ! 37 flops/particle, 14 loads, 10 stores, 2 divides, 1 sqrt, 
 ! if all profiles calculated
 ! input: all, output: fms
@@ -1618,7 +2084,8 @@
 !     if ((mx.ge.MXV).or.(my.ge.MYV)) return
 ! loop over tiles
 !$OMP PARALLEL DO                                                       &
-!$OMP& PRIVATE(j,k,ii,noff,npp,nn,x,w,dxp,amx,dx,vx,p2,gami,sfx,sfms,sg)
+!$OMP& PRIVATE(j,k,ii,noff,npp,nn,x,w,dxp,amx,dx,vx,p2,gami,sfx,sfms,sg)&
+!$OMP& SCHEDULE(dynamic)
       do 100 k = 1, mx1
       noff = mx*(k - 1)
       npp = kpic(k)
@@ -1698,7 +2165,7 @@
 ! using first-order linear interpolation.
 ! OpenMP version using guard cells
 ! data deposited in tiles
-! particles stored segmented array
+! particles stored in segmented array
 ! 142 flops/particle, 1 divide, 44 loads, 28 stores
 ! if all profiles calculated
 ! input: all, output: fms
@@ -1804,7 +2271,7 @@
 !$OMP PARALLEL DO                                                       &
 !$OMP& PRIVATE(j,k,ii,noff,npp,nn,x,y,z,w,dxp,amx,dx,dy,dz,ox,oy,oz,vx, &
 !$OMP& vy,vz,acx,acy,acz,omxt,omyt,omzt,omt,anorm,rot1,rot2,rot3,rot4,  &
-!$OMP& rot5,rot6,rot7,rot8,rot9,sfxyz,sbyz,sfms,sg)
+!$OMP& rot5,rot6,rot7,rot8,rot9,sfxyz,sbyz,sfms,sg) SCHEDULE(dynamic)
       do 110 k = 1, mx1
       noff = mx*(k - 1)
       npp = kpic(k)
@@ -1940,7 +2407,7 @@
 ! using first-order linear interpolation.
 ! OpenMP version using guard cells
 ! data deposited in tiles
-! particles stored segmented array
+! particles stored in segmented array
 ! 160 flops/particle, 4 divides, 2 sqrt, 44 loads, 28 stores
 ! if all profiles calculated
 ! input: all, output: fms
@@ -2052,7 +2519,8 @@
 !$OMP PARALLEL DO                                                       &
 !$OMP& PRIVATE(j,k,ii,noff,npp,nn,x,y,z,w,dxp,amx,dx,dy,dz,ox,oy,oz,vx, &
 !$OMP& vy,vz,acx,acy,acz,omxt,omyt,omzt,omt,anorm,rot1,rot2,rot3,rot4,  &
-!$OMP& rot5,rot6,rot7,rot8,rot9,p2,gami,qtmg,sfxyz,sbyz,sfms,sg)
+!$OMP& rot5,rot6,rot7,rot8,rot9,p2,gami,qtmg,sfxyz,sbyz,sfms,sg)        &
+!$OMP& SCHEDULE(dynamic)
       do 110 k = 1, mx1
       noff = mx*(k - 1)
       npp = kpic(k)
@@ -2361,7 +2829,7 @@
 ! for 1d code, this procedure sets test charge distribution by setting
 ! a particle id in particle location 3, whose values are between 1 and
 ! nprobt
-! particles stored segmented array
+! particles stored in segmented array
 ! input: all, output: iprobt, nprobt
 ! ppart(2,n,m) = velocity vx of particle n in tile m
 ! ppart(3,n,m) = particle id of tagged particle n in tile m
@@ -2459,7 +2927,7 @@
 ! for 1-2/2d code, this procedure sets test charge distribution by
 ! setting a particle id in particle location 5, whose values are between
 ! 1 and nprobt
-! particles stored segmented array
+! particles stored in segmented array
 ! input: all, output: iprobt, nprobt
 ! ppart(2,n,m) = velocity vx of particle n in tile m
 ! ppart(5,n,m) = particle id of tagged particle n in tile m
@@ -2627,6 +3095,7 @@
       subroutine PTRAJ1(ppart,kpic,partt,idimp,nppmx,mx1,nprobt)
 ! this procedure copies tagged particles in ppart to array partt
 ! input: all except partt, output: partt
+! ppart(1,n,m) = position x of particle n in tile m
 ! ppart(2,n,m) = velocity vx of particle n in tile m
 ! ppart(3,n,m) = particle id of tagged particle n in tile m
 ! kpic = number of particles per tile
@@ -2667,11 +3136,13 @@
       subroutine PTRAJ13(ppart,kpic,partt,idimp,nppmx,mx1,nprobt)
 ! this procedure copies tagged particles in ppart to array partt
 ! input: all except partt, output: partt
+! ppart(1,n,m) = position x of particle n in tile m
 ! ppart(2,n,m) = velocity vx of particle n in tile m
 ! ppart(3,n,m) = velocity vy of particle n in tile m
 ! ppart(4,n,m) = velocity vz of particle n in tile m
 ! ppart(5,n,m) = particle id of tagged particle n in tile m
 ! kpic = number of particles per tile
+! partt = tagged particle coordinates
 ! idimp = size of phase space = 5
 ! nppmx = maximum number of particles in tile
 ! mx1 = (system length in x direction - 1)/mx + 1

@@ -62,6 +62,14 @@
 ! traj_diag1: trajectory diagnostic
 ! del_traj_diag1: delete trajectory diagnostic
 !
+! init_ephasesp_diag1: initialize electron phase space diagnostic
+! ephasesp_diag1: electron phase space diagnostic
+! del_ephasesp_diag1: delete electron phase space diagnostic
+!
+! init_iphasesp_diag1: initialize ion phase space diagnostic
+! iphasesp_diag1: ion phase space diagnostic
+! del_iphasesp_diag1: delete ion electron phase space diagnostic
+!
 ! print_timings1: print timing summaries
 !
 ! reset_diags1: reset electrostatic diagnostics
@@ -80,7 +88,7 @@
 !
 ! written by Viktor K. Decyk, UCLA
 ! copyright 1999-2016, regents of the university of california
-! update: december 9, 2017
+! update: february 1, 2021
       module f1
       use in1
       use minit1
@@ -113,7 +121,7 @@
       integer, dimension(2) :: irc2 = 0
 !
 ! declare scalars for diagnostics
-      integer :: it, iw, mtw, mtp, mtv, mtt
+      integer :: nmv21, it, iw, mtw, mtp, mtv, mtt
       integer :: itw = 0, itp = 0, itv = 0, itt = 0
       integer :: iwi, mtdi
       integer :: itdi = 0
@@ -121,9 +129,9 @@
       integer :: iuin = 8, iurr = 9, iuot = 18, iudm = 19
       integer :: iur = 17, iur0 = 27
       integer :: iude = 10, iup = 11, iuel = 12
-      integer :: iufe = 23, iufi = 24
-      integer :: iudi = 20
-      real :: ts
+      integer :: iufe = 23, iuve = 25, iut = 28, iuse = 29
+      integer :: iudi = 20, iufi = 24, iuvi = 26, iusi = 30
+      real :: ts, eci, wkt
       character(len=10) :: cdrun
       character(len=32) :: fname
 !
@@ -178,15 +186,20 @@
       real, dimension(:,:), allocatable :: fmse, fmsi
 ! fv/fvi = global electron/ion velocity distribution functions
       real, dimension(:,:), allocatable :: fv, fvi
+! fe/fei = global electron/ion energy distribution functions
+      real, dimension(:,:), allocatable :: fe, fei
 ! fvm/fvmi = electron/ion vdrift, vth, entropy for global distribution
       real, dimension(:,:), allocatable :: fvm, fvmi
 ! fvtm/fvtmi = time history of electron/ion vdrift, vth, and entropy
       real, dimension(:,:,:), allocatable :: fvtm, fvtmi
 ! fvtp = velocity distribution function for test particles
 ! fvmtp = vdrift, vth, and entropy for test particles
-      real, dimension(:,:), allocatable :: fvtp, fvmtp
+! fetp = energy distribution function for test particles
+      real, dimension(:,:), allocatable :: fvtp, fvmtp, fetp
 ! partd = trajectory time history array
       real, dimension(:,:,:), allocatable :: partd
+! fvs/fvsi = global electron/ion phase space distribution functions
+      real, dimension(:,:,:), allocatable :: fvs, fvsi
 ! scratch arrays for spectral analysis
       real, dimension(:), allocatable :: wm, wmi
 ! cwk = labels for power spectrum display
@@ -222,6 +235,7 @@
       public :: ppart, pparti, kpic, kipic
       public :: wt, sfield, pkw, pkwdi, wk, wkdi, fmse, fmsi
       public :: fv, fvi, fvm, fvmi, fvtm, fvtmi, fvtp, fvmtp, partd
+      public :: fvs, fvsi
       public :: wm, wmi, cwk
       private :: s, sfieldc
       private :: denet, denit, pksdi, pott, pks, elt
@@ -381,7 +395,7 @@
          call wmpush1(ppart,fxe,kpic,ncl,ihole,qbme,dt,ci,wke,tpush,nx, &
      &mx,ipbc,relativity,plist,irc)
 ! zero force: updates ppart, wke and possibly ncl, ihole, and irc
-      else
+      else if (mzf==1) then
          call wmpush1zf(ppart,kpic,ncl,ihole,dt,ci,wke,tpush,nx,mx,ipbc,&
      &relativity,plist,irc)
       endif
@@ -542,7 +556,7 @@
          call wmpush1(pparti,fxe,kipic,ncl,ihole,qbmi,dt,ci,wki,tpush,nx&
      &,mx,ipbc,relativity,plist,irc)
 ! zero force: updates pparti, wki and possibly ncl, ihole, and irc
-      else
+      else if (mzf==1) then
          call wmpush1zf(pparti,kipic,ncl,ihole,dt,ci,wki,tpush,nx,mx,   &
      &ipbc,relativity,plist,irc)
       endif
@@ -989,6 +1003,16 @@
       subroutine init_ifluidms_diag1()
 ! initialize ion fluid moments diagnostic
       implicit none
+! calculate first dimension of fluid arrays
+      if (npro==1) then
+         nprd = 1
+      else if (npro==2) then
+         nprd = 2
+      else if (npro==3) then
+         nprd = 3
+      else if (npro==4) then
+         nprd = 5
+      endif
       if ((ndfm==2).or.(ndfm==3)) then
          allocate(fmsi(nprd,nxe))
 ! open file for real data: updates nfirec and possibly iufi
@@ -1038,41 +1062,100 @@
       subroutine init_evelocity_diag1()
 ! initialize electron velocity diagnostic
       implicit none
-      allocate(fv(2*nmv+2,ndim),fvm(ndim,3))
-      allocate(sfv(2*nmv+2,ndim,mx1+1))
+      nfvd = 0; nfed = 0
+      if ((nvft==1).or.(nvft==3)) then
+         nfvd = ndim
+      endif
+      if ((nvft==2).or.(nvft==3)) then
+         nfed = 1
+      endif
       mtv = (nloop - 1)/ntv + 1; itv = 0
-      allocate(fvtm(mtv,ndim,3))
-      sfv(1,:,:) = 2.0*max(4.0*vtx+abs(vx0),4.0*vtdx+abs(vdx))
-      fvtm = 0.0
+      eci = ci; if (relativity==0) eci = 0.0
+      wkt = 0.0
+      if ((ndv==1).or.(ndv==3)) then
+! estimate maximum electron velocity or momentum
+         ws = 0.0
+         if (npx > 0) then
+            ws = 4.0*vtx+abs(vx0)
+         endif
+         if (npxb > 0) then
+            ws = max(ws,4.0*vtdx+abs(vdx))
+         endif
+! cylindrical not supported in electrostatic code
+         if (nvft < 4) then
+            allocate(fv(2*nmv+2,nfvd),fvm(ndim,3),fe(2*nmv+2,nfed))
+            allocate(sfv(2*nmv+2,ndim,mx1+1))
+            fvm = 0.0
+! open file for electron velocity data: updates nverec and possibly iuve
+            fvename = 'fve1.'//cdrun
+            if (nverec==0) then
+               call dafopenfv1(fvm,fv,fe,wkt,iuve,nverec,trim(fvename))
+            endif
+         endif
+! cartesian distribution
+         if ((nvft==1).or.(nvft==3)) then
+            allocate(fvtm(mtv,ndim,3))
+            fvtm = 0.0
+! set velocity or momentum scale
+            fv(2*nmv+2,1) = 2.0*ws
+         endif
+! energy distribution
+         if ((nvft==2).or.(nvft==3)) then
+! set energy scale for electrons
+            ws = ws*ws
+            fe(2*nmv+2,1) = ws/(1.0 + sqrt(1.0 + ws*eci*eci))
+         endif
+      endif
       end subroutine
 !
 !-----------------------------------------------------------------------
-      subroutine evelocity_diag1(ppart,kpic,fv,fvm,fvtm)
+      subroutine evelocity_diag1(fv,fe,fvm,fvtm,wkt)
 ! electron velocity diagnostic
       implicit none
-! ppart = tiled electron particle arrays
-      real, dimension(:,:,:), intent(inout) :: ppart
-! kpic = number of electrons in each tile
-      integer, dimension(:), intent(inout) :: kpic
-! fv = global electron velocity distribution functions
+! fv = global electron velocity distribution function
       real, dimension(:,:), intent(inout) :: fv
-! fvmi = electron vdrift, vth, entropy for global distribution
+! fe = global electron energy distribution function
+      real, dimension(:,:), intent(inout) :: fe
+! fvm = electron vdrift, vth, entropy for global distribution
       real, dimension(:,:), intent(inout)  :: fvm
 ! fvtm = time history of electron vdrift, vth, and entropy
       real, dimension(:,:,:), intent(inout) :: fvtm
-! calculate electron distribution function and moments
-      call mvpdist1(ppart,kpic,sfv,fvm,tdiag,np,nmv)
-      fv = sfv(:,:,mx1+1)
+! wkt = total energy contained in distribution
+      real, intent(inout) :: wkt
+      if ((ndv==1).or.(ndv==3)) then
+! calculate electron cartesian distribution function and moments
+         if ((nvft==1).or.(nvft==3)) then
+            sfv(2*nmv+2,:,mx1+1) = fv(2*nmv+2,:)
+            call mvpdist1(ppart,kpic,sfv,fvm,tdiag,np,nmv)
+            fv = sfv(:,:,mx1+1)
 ! store time history electron vdrift, vth, and entropy
-      itv = itv + 1
-      fvtm(itv,:,:) = fvm
+            itv = itv + 1
+            fvtm(itv,:,:) = fvm
+         endif
+! electron energy distribution
+         if ((nvft==2).or.(nvft==3)) then
+            sfv(2*nmv+2,1,mx1+1) = fe(2*nmv+2,1)
+            call merpdist1(ppart,kpic,sfv,eci,wkt,tdiag,nmv)
+            fe(:,1) = sfv(:,1,mx1+1)
+         endif
+! cylindrical not supported in electrostatic code
+         if (nvft < 4) then
+! write electron velocity-space diagnostic output: updates nverec
+            call dafwritefv1(fvm,fv,fe,wkt,tdiag,iuve,nverec)
+         endif
+      endif   
       end subroutine
 !
 !-----------------------------------------------------------------------
       subroutine del_evelocity_diag1()
 ! delete electron velocity diagnostic
       implicit none
-      deallocate(fv,fvm,fvtm)
+      if (nverec > 0) then
+         close(unit=iuve)
+         nverec = nverec - 1
+      endif
+      if ((ndv==1).or.(ndv==3)) deallocate(fv,fvm,fe)
+      if (allocated(fvtm)) deallocate(fvtm)
       if (allocated(sfv)) deallocate(sfv)
       end subroutine
 !
@@ -1080,41 +1163,103 @@
       subroutine init_ivelocity_diag1()
 ! initialize ion velocity diagnostic
       implicit none
-      allocate(fvi(2*nmv+2,ndim),fvmi(ndim,3))
-      allocate(sfvi(2*nmv+2,ndim,mx1+1))
-      allocate(fvtmi(mtv,ndim,3))
-      sfvi(1,:,:) = 2.0*max(4.0*vtxi+abs(vxi0),4.0*vtdxi+abs(vdxi))
-      fvtmi = 0.0
+      nfvd = 0; nfed = 0
+      if ((nvft==1).or.(nvft==3)) then
+         nfvd = ndim
+      endif
+      if ((nvft==2).or.(nvft==3)) then
+         nfed = 1
+      endif
+      mtv = (nloop - 1)/ntv + 1; itv = 0
+      eci = ci; if (relativity==0) eci = 0.0
+      wkt = 0.0
+      if ((ndv==2).or.(ndv==3)) then
+! estimate maximum ion velocity or momentum
+         ws = 0.0
+         if (npxi > 0) then
+            ws = 4.0*vtxi+abs(vxi0)
+         endif
+         if (npxbi > 0) then
+            ws = max(ws,4.0*vtdxi+abs(vdxi))
+         endif
+! cylindrical not supported in electrostatic code
+         if (nvft < 4) then
+            allocate(fvi(2*nmv+2,nfvd),fvmi(ndim,3),fei(2*nmv+2,nfed))
+            allocate(sfvi(2*nmv+2,ndim,mx1+1))
+            fvmi = 0.0
+! open file for ion velocity data: updates nvirec and possibly iuvi
+            fviname = 'fvi1.'//cdrun
+            if (nvirec==0) then
+               call dafopenfv1(fvmi,fvi,fei,wkt,iuvi,nvirec,            &
+     &trim(fviname))
+            endif
+         endif
+! cartesian distribution
+         if ((nvft==1).or.(nvft==3)) then
+            allocate(fvtmi(mtv,ndim,3))
+            fvtmi = 0.0
+! set velocity or momentum scale
+            fvi(2*nmv+2,1) = 2.0*ws
+         endif
+! energy distribution
+         if ((nvft==2).or.(nvft==3)) then
+! set energy scale for ions
+            ws = ws*ws
+            fei(2*nmv+2,1) = ws/(1.0 + sqrt(1.0 + ws*eci*eci))
+         endif
+      endif
       end subroutine
 !
 !-----------------------------------------------------------------------
-      subroutine ivelocity_diag1(pparti,kipic,fvi,fvmi,fvtmi)
+      subroutine ivelocity_diag1(fvi,fei,fvmi,fvtmi,wkt)
 ! ion velocity diagnostic
       implicit none
-! pparti = tiled ion particle arrays
-      real, dimension(:,:,:), intent(inout) :: pparti
-! kipic = number of ions in each tile
-      integer, dimension(:), intent(inout) :: kipic
-! fvi = global ion velocity distribution functions
+! fvi = global ion velocity distribution function
       real, dimension(:,:), intent(inout) :: fvi
+! fei = global ion energy distribution function
+      real, dimension(:,:), intent(inout) :: fei
 ! fvmi = ion vdrift, vth, entropy for global distribution
       real, dimension(:,:), intent(inout)  :: fvmi
 ! fvtmi = time history of ion vdrift, vth, and entropy
       real, dimension(:,:,:), intent(inout) :: fvtmi
-! calculate ion distribution function and moments
-      call mvpdist1(pparti,kipic,sfvi,fvmi,tdiag,npi,nmv)
-      fvi = sfvi(:,:,mx1+1)
+! wkt = total energy contained in distribution
+      real, intent(inout) :: wkt
+      if ((ndv==2).or.(ndv==3)) then
+! calculate ion cartesian distribution function and moments
+         if ((nvft==1).or.(nvft==3)) then
+            sfvi(2*nmv+2,:,mx1+1) = fvi(2*nmv+2,:)
+            call mvpdist1(pparti,kipic,sfvi,fvmi,tdiag,npi,nmv)
+            fvi = sfvi(:,:,mx1+1)
 ! update time step if electrons have not been calculated
-      if (ndv==2) itv = itv + 1
+            if (ndv==2) itv = itv + 1
 ! store time history of ion vdrift, vth, and entropy
-      fvtmi(itv,:,:) = fvmi
+            fvtmi(itv,:,:) = fvmi
+         endif
+! ion energy distribution
+         if ((nvft==2).or.(nvft==3)) then
+            sfvi(2*nmv+2,1,mx1+1) = fei(2*nmv+2,1)
+            call merpdist1(pparti,kipic,sfvi,eci,wkt,tdiag,nmv)
+            fei(:,1) = sfvi(:,1,mx1+1)
+            wkt = rmass*wkt
+         endif
+! cylindrical not supported in electrostatic code
+         if (nvft < 4) then
+! write ion velocity-space diagnostic output: updates nvirec
+            call dafwritefv1(fvmi,fvi,fei,wkt,tdiag,iuvi,nvirec)
+         endif
+      endif
       end subroutine
 !
 !-----------------------------------------------------------------------
       subroutine del_ivelocity_diag1()
 ! delete ion velocity diagnostic
       implicit none
-      deallocate(fvi,fvmi,fvtmi)
+      if (nvirec > 0) then
+         close(unit=iuvi)
+         nvirec = nvirec - 1
+      endif
+      if ((ndv==2).or.(ndv==3)) deallocate(fvi,fvmi,fei)
+      if (allocated(fvtmi)) deallocate(fvtmi)
       if (allocated(sfvi)) deallocate(sfvi)
       end subroutine
 !
@@ -1126,66 +1271,287 @@
       integer, intent(in) :: ntime
 ! set initial test trajectories
       if ((ntime+ntime0)==0) then
-         allocate(iprobt(nprobt))
-! sets test charge distribution: updates ppart, iprobt, nprobt
-         call setptraj1(ppart,kpic,iprobt,nst,vtx,vtsx,dvtx,np,nprobt,  &
-     &irc)
-         if (irc /= 0) stop
-         if (nprobt.gt.16777215) then
-            write(*,*) 'nprobt overflow = ', nprobt
+         if ((ndt==2).and.(movion==0)) ndt = 0
+         if ((ndt==1).or.(ndt==2)) then
+            allocate(iprobt(nprobt))
+         endif
+! electron trajectories
+         if (ndt==1) then
+! sets electron test charge distribution: updates ppart, iprobt, nprobt
+            call setptraj1(ppart,kpic,iprobt,nst,vtx,vtsx,dvtx,np,nprobt&
+     &,irc)
+            if (irc /= 0) then
+               write (*,*) 'esetptraj1 error: irc=', irc
+               stop
+            endif
+! estimate maximum electron velocity or momentum
+            if (nst==3) then
+               ws = 0.0
+               if (npx > 0) then
+                  ws = 4.0*vtx+abs(vx0)
+               endif
+               if (npxb > 0) then
+                  ws = max(ws,4.0*vtdx+abs(vdx))
+               endif
+            endif
+! ion trajectories
+         else if (ndt==2) then
+            if (movion==1) then
+! sets ion test charge distribution: updates ppart, iprobt, nprobt
+               call setptraj1(pparti,kipic,iprobt,nst,vtxi,vtsx,dvtx,npi&
+     &,nprobt,irc)
+               if (irc /= 0) then
+                  write (*,*) 'isetptraj1 error: irc=', irc
+                  stop
+               endif
+! estimate maximum ion velocity or momentum
+               if (nst==3) then
+                  ws = 0.0
+                  if (npxi > 0) then
+                     ws = 4.0*vtxi+abs(vxi0)
+                  endif
+                  if (npxbi > 0) then
+                     ws = max(ws,4.0*vtdxi+abs(vdxi))
+                  endif
+               endif
+            endif
+         endif
+         if (allocated(iprobt)) deallocate(iprobt)
+! find number of existing test trajectories: updates nprobt
+      else
+         if (ndt==1) then
+            call mfnptraj1(ppart,kpic,nprobt,irc)
+            if (nst==3) then
+               ws = 0.0
+               if (npx > 0) then
+                  ws = 4.0*vtx+abs(vx0)
+               endif
+               if (npxb > 0) then
+                  ws = max(ws,4.0*vtdx+abs(vdx))
+               endif
+            endif
+         else if (ndt==2) then
+            call mfnptraj1(pparti,kipic,nprobt,irc)
+            if (nst==3) then
+               ws = 0.0
+               if (npxi > 0) then
+                   ws = 4.0*vtxi+abs(vxi0)
+               endif
+               if (npxbi > 0) then
+                  ws = max(ws,4.0*vtdxi+abs(vdxi))
+               endif
+            endif
+         endif
+         if (irc /= 0) then
+            write (*,*) 'mfnptraj1 error: irc=', irc
             stop
          endif
-         deallocate(iprobt)
-! find number of existing test tractories: updates nprobt
-      else
-         call mfnptraj1(ppart,kpic,nprobt,irc)
-         if (irc /= 0) stop
       endif
-      allocate(partt(idimp,nprobt))
-      if ((nst==1).or.(nst==2)) then
-         mtt = (nloop - 1)/ntt + 1; itt = 0
-         allocate(partd(mtt,idimp,nprobt))
-      else if (nst==3) then
-         allocate(fvtp(2*nmv+2,ndim),fvmtp(ndim,3))
-         fvtp(1,:) = 2.0*max(4.0*vtx+abs(vx0),4.0*vtdx+abs(vdx))
+! electron or ion trajectories
+      if ((ndt==1).or.(ndt==2)) then
+         if (nprobt > 16777215) then
+               write(*,*) 'nprobt overflow = ', nprobt
+               stop
+         endif
+         ndimp = idimp
+         allocate(partt(idimp,nprobt))
+         ftname = 'tr1.'//cdrun
+! track particle trajectories
+         if ((nst==1).or.(nst==2)) then
+            mtt = (nloop - 1)/ntt + 1
+            itt = 0
+            allocate(partd(mtt,idimp,nprobt))
+            partd = 0.0
+! open file for trajectory data: updates ntrec and possibly iut
+            if (ntrec==0) then
+               call dafopentr1(partt,iut,ntrec,trim(ftname))
+            endif
+! calculate test particle distribution function and moments
+         else if (nst==3) then
+            allocate(fvtp(2*nmv+2,ndim),fvmtp(ndim,3))
+            allocate(fetp(2*nmv+2,0))
+            fvtp(2*nmv+2,:) = 2.0*ws
+! open file for test particle diagnostic: updates ntrec and possibly iut
+            if (ntrec==0) then
+               ws = 0.0
+               call dafopenfv1(fvmtp,fvtp,fetp,ws,iut,ntrec,            &
+     &trim(ftname))
+            endif
+         endif
       endif
       end subroutine
 !
 !-----------------------------------------------------------------------
-      subroutine traj_diag1(ppart,kpic,partd,fvtp,fvmtp)
+      subroutine traj_diag1(partd,fvtp,fvmtp)
 ! trajectory diagnostic
       implicit none
-! ppart = tiled electron particle array
-      real, dimension(:,:,:), intent(inout) :: ppart
-! kpic = number of electrons/ in each tile
-      integer, dimension(:), intent(inout) :: kpic
 ! partd = trajectory time history array
       real, dimension(:,:,:), intent(inout) :: partd
 ! fvtp = velocity distribution function for test particles
 ! fvmtp = vdrift, vth, and entropy for test particles
       real, dimension(:,:), intent(inout) :: fvtp, fvmtp
-! copies trajectories to array partt
-      call mptraj1(ppart,kpic,partt,tdiag,irc)
-      if (irc /= 0) stop
-      itt = itt + 1
-      if ((nst==1).or.(nst==2)) then
-         partd(itt,:,:) = partt
-      else if (nst==3) then
-! calculate test particle distribution function and moments
-         call mvdist1(partt,fvtp,fvmtp,tdiag,nprobt,nmv)
+! copies tagged electron coordinates to array partt
+      if (ndt==1) then
+         call mptraj1(ppart,kpic,partt,tdiag,irc)
+! copies tagged ion coordinatess to array partti
+      else if (ndt==2) then
+         if (movion==1) then
+            call mptraj1(pparti,kipic,partt,tdiag,irc)
+         endif
       endif
+      if (irc /= 0) stop
+! electron or ion trajectories
+      if ((ndt==1).or.(ndt==2)) then
+! store particle trajectories
+         if ((nst==1).or.(nst==2)) then
+! write trajectory diagnostic output: updates ntrec
+            call dafwritetr1(partt,tdiag,iut,ntrec)
+            itt = itt + 1
+            partd(itt,:,:) = partt
+! calculate test particle distribution function and moments
+         else if (nst==3) then
+! calculate test particle distribution function and moments
+            call mvdist1(partt,fvtp,fvmtp,tdiag,nprobt,nmv)
+! write test particle diagnostic output: updates ntrec
+             ws = 0.0
+             call dafwritefv1(fvmtp,fvtp,fetp,ws,tdiag,iut,ntrec)
+         endif
+      endif 
       end subroutine
 !
 !-----------------------------------------------------------------------
       subroutine del_traj_diag1()
 ! delete trajectory diagnostic
       implicit none
+      if (ntrec > 0) then
+         close(unit=iut)
+         ntrec = ntrec - 1
+      endif
       if (allocated(partt)) deallocate(partt)
       if ((nst==1).or.(nst==2)) then
          deallocate(partd)
       else if (nst==3) then
-         deallocate(fvtp,fvmtp)
+         deallocate(fvtp,fvmtp,fetp)
       endif
+      end subroutine
+!
+!-----------------------------------------------------------------------
+      subroutine init_ephasesp_diag1()
+! initialize electron phase space diagnostic
+      implicit none
+      nmv21 = 2*nmv + 1
+      mvx = min(mvx,nx)
+      nsxb = (nx - 1)/mvx + 1
+! electron phase space diagnostic
+      if ((nds==1).or.(nds==3)) then
+! estimate maximum electron velocity or momentum
+         ws = 0.0
+         if (npx > 0) then
+            ws = 4.0*vtx+abs(vx0)
+         endif
+         if (npxb > 0) then
+            ws = max(ws,4.0*vtdx+abs(vdx))
+         endif
+         allocate(fvs(nmv21+1,ndim,nsxb))
+         fvs = 0.0
+         fvs(nmv21+1,:,1) = 1.25*ws
+! open file for electron phase space data:
+! updates nserec and possibly iuse
+! opens a new fortran unformatted stream file
+         if (nserec==0) then
+            fsename = 'pse1.'//cdrun
+            iuse =  get_funit(iuse)
+            call fnopens1(iuse,trim(fsename))
+            nserec = 1
+         endif
+      endif
+      end subroutine
+!
+!-----------------------------------------------------------------------
+      subroutine ephasesp_diag1(fvs)
+! electron phase space diagnostic
+! fvs = global electron phase space distribution function
+      real, dimension(:,:,:), intent(inout) :: fvs
+      if ((nds==1).or.(nds==3)) then
+! calculates velocity distribution in different regions of space:
+! updates fvs
+         call mvspdist1(ppart,kpic,fvs,tdiag,nmv,mvx)
+! write phase space diagnostic output: updates nserec
+         if (nserec > 0) then
+            call mwrfvsdata1(fvs,tdiag,iuse)
+            nserec = nserec + 1
+         endif
+      endif
+      end subroutine
+!
+!-----------------------------------------------------------------------
+      subroutine del_ephasesp_diag1()
+! delete electron phase space diagnostic
+      implicit none
+      if (nserec > 0) then
+         close(unit=iuse)
+         nserec = nserec - 1
+      endif
+      if (allocated(fvs)) deallocate(fvs)
+      end subroutine
+!
+!-----------------------------------------------------------------------
+      subroutine init_iphasesp_diag1()
+! initialize ion phase space diagnostic
+      implicit none
+      nmv21 = 2*nmv + 1
+      mvx = min(mvx,nx)
+      nsxb = (nx - 1)/mvx + 1
+      if ((nds==2).or.(nds==3)) then
+! estimate maximum ion velocity or momentum
+         ws = 0.0
+         if (npxi > 0) then
+            ws = 4.0*vtxi+abs(vxi0)
+         endif
+         if (npxbi > 0) then
+            ws = max(ws,4.0*vtdxi+abs(vdxi))
+         endif
+         allocate(fvsi(nmv21+1,ndim,nsxb))
+         fvsi = 0.0
+         fvsi(nmv21+1,:,1) = 1.25*ws
+! open file for ion phase space data:
+! updates nsirec and possibly iusi
+! opens a new fortran unformatted stream file
+         if (nsirec==0) then
+            fsiname = 'psi1.'//cdrun
+            iusi =  get_funit(iusi)
+            call fnopens1(iusi,trim(fsiname))
+            nsirec = 1
+         endif
+      endif
+      end subroutine
+!
+!-----------------------------------------------------------------------
+      subroutine iphasesp_diag1(fvsi)
+! ion phase space diagnostic
+! fvsi = global ion phase space distribution function
+      real, dimension(:,:,:), intent(inout) :: fvsi
+      if ((nds==2).or.(nds==3)) then
+! calculates velocity distribution in different regions of space:
+! updates fvsi
+         call mvspdist1(pparti,kipic,fvsi,tdiag,nmv,mvx)
+! write phase space diagnostic output: updates nsirec
+         if (nsirec > 0) then
+            call mwrfvsdata1(fvsi,tdiag,iusi)
+            nsirec = nsirec + 1
+         endif
+      endif
+      end subroutine
+!
+!-----------------------------------------------------------------------
+      subroutine del_iphasesp_diag1()
+! delete ion phase space diagnostic
+      implicit none
+      if (nsirec > 0) then
+         close(unit=iusi)
+         nsirec = nsirec - 1
+      endif
+      if (allocated(fvsi)) deallocate(fvsi)
       end subroutine
 !
 !-----------------------------------------------------------------------
@@ -1259,12 +1625,24 @@
          endif
       endif
       if (ntv > 0) then
+         if (nverec > 1) nverec = 1
          itv = 0; fvtm = 0.0
          if (movion==1) then
+            if (nvirec > 1) nvirec = 1
             fvtmi = 0.0
          endif
       endif
-      if (ntt > 0) itt = 0
+      if (ntt > 0) then
+         if (ntrec > 1) ntrec = 1
+         itt = 0
+         if (allocated(partd)) partd = 0.0
+      endif
+      if (nts > 0) then
+         if (nserec > 1) nserec = 1
+         if (movion==1) then
+            if (nsirec > 1) nsirec = 1
+         endif
+      endif
       end subroutine
 !
 !-----------------------------------------------------------------------
@@ -1287,13 +1665,24 @@
 ! ions
          if (movion==1) call del_ifluidms_diag1()
       endif
+! velocity diagnostic
+      if (ntv > 0) then
+         call del_evelocity_diag1()
+         if (movion==1) call del_ivelocity_diag1()
+      endif
+! trajectory diagnostic
+      if (ntt > 0) call del_traj_diag1()
+! phase space diagnostic
+      if (nts > 0) then
+         call del_ephasesp_diag1()
+         if (movion==1) call del_iphasesp_diag1()
+      endif
 ! ion density diagnostic
       if (movion==1) then
          if (ntdi > 0) call del_idensity_diag1()
       endif
 ! write final diagnostic metafile
       call writnml1(iudm)
-      close(unit=iudm)
 ! deallocate arrays
       call del_fields1()
       call del_electrons1()
@@ -1303,11 +1692,6 @@
          call del_spectrum1()
       endif
       if (ntw > 0) call del_energy_diag1()
-      if (ntv > 0) then
-         call del_evelocity_diag1()
-         if (movion==1) call del_ivelocity_diag1()
-      endif
-      if (ntt > 0) call del_traj_diag1()
       end subroutine
 !
 !-----------------------------------------------------------------------
@@ -1365,10 +1749,19 @@
          if (movion==1) call init_ivelocity_diag1()
       endif
 !
-! initialize trajectory diagnostic: allocates partd, fvtp, fvmtp
+! initialize trajectory diagnostic: allocates partd, fvtp, fvmtp, fetp
       if (ntt > 0) then
          call init_traj_diag1(ntime)
       endif
+!
+! initialize phase space diagnostic:
+      if (nts > 0) then
+! electrons: allocates fvs
+         call init_ephasesp_diag1()
+! ions: allocates fvsi
+         if (movion==1) call init_iphasesp_diag1()
+      endif
+!
       end subroutine
 !
 !-----------------------------------------------------------------------
@@ -1383,9 +1776,9 @@
       character(len=6) :: a = 'stream'
       character(len=11) :: f = 'unformatted'
 ! reset file
-      fname = 'reset1'
-      iurr = get_funit(iurr)
-      open(iurr,file=trim(fname),access=a,form=f,status='unknown')
+!     fname = 'reset1'
+!     iurr = get_funit(iurr)
+!     open(iurr,file=trim(fname),access=a,form=f,status='unknown')
 ! restart file
       fname = 'rstrt1.'//cdrun
       iur = get_funit(iur)
@@ -1437,7 +1830,7 @@
       endif
 ! write out if ions are moving
       write (iur) movion
-      if (movion==1) then
+      if (movion > 0) then
 ! copy ordered particles to linear array: updates part, npp
          call mpcopyout1(part,pparti,kipic,npp,irc)
 ! write out size of ion array
@@ -1478,7 +1871,11 @@
          write (*,*) 'ntime restart error, ios = ', ios
          stop
       endif
-      write (*,*) 'restarting from ntime, idrun0 = ', ntime, idrun0
+      if (nustrt==0) then
+         write (*,*) 'restarting from ntime, idrun0 = ', ntime, idrun0
+      else
+         write (*,*) 'restarting from ntime = ', ntime
+      endif
 ! read in size of electron array
       read (iur,iostat=ios) npp, ndimp
       if (ios /= 0) then
@@ -1529,7 +1926,7 @@
          stop
       endif
 ! ions are moving
-      if (movion==1) then
+      if (movion > 0) then
 ! read in size of ion array
          read (iur,iostat=ios) npp, ndimp
          if (ios /= 0) then
@@ -1681,7 +2078,7 @@
       endif
 !
 ! write out ion density diagnostic parameter
-      if (movion==1) then
+      if (movion > 0) then
          write (iur) ntdi
 ! write out record location
          if (ntdi > 0) then
@@ -1727,7 +2124,7 @@
                write (iur) fname
             endif
          endif
-         if (movion==1) then
+         if (movion > 0) then
 ! write out ion record location
             write (iur) nfirec
 ! write out record length (zero if error) and file name (if no error)
@@ -1746,15 +2143,47 @@
 ! write out velocity diagnostic parameter
       write (iur) ntv
       if (ntv > 0) then
-         write (iur) itv
-! write out time history array sizes and data
+! write out electron record location
+         write (iur) nverec
+! write out record length (zero if error) and file name (if no error)
+         if (nverec > 0) then
+            inquire(file=fvename,recl=it,iostat=ios)
+            if (ios /= 0) it = 0
+            write (iur) it
+            if (it > 0) then
+               fname = fvename
+               write (iur) fname
+            endif
+         endif
+         write (iur) itv, ndv
+! write out electron time history array sizes and data
          if (itv > 0) then
-            it = size(fvtm,2)
-            write (iur) size(fvtm,1), it, size(fvtm,3)
-            write (iur) (((fvtm(i,j,k),i=1,itv),j=1,it),k=1,3)
-            if (movion==1) then
-               write (iur) size(fvtmi,1), it, size(fvtmi,3)
-               write (iur) (((fvtmi(i,j,k),i=1,itv),j=1,it),k=1,3)
+            if ((ndv==1).or.(ndv==3)) then
+               it = size(fvtm,2)
+               write (iur) size(fvtm,1), it, size(fvtm,3)
+               write (iur) (((fvtm(i,j,k),i=1,itv),j=1,it),k=1,3)
+            endif
+         endif
+         if (movion > 0) then
+! write out ion record location
+            write (iur) nvirec
+! write out record length (zero if error) and file name (if no error)
+            if (nvirec > 0) then
+               inquire(file=fviname,recl=it,iostat=ios)
+               if (ios /= 0) it = 0
+               write (iur) it
+               if (it > 0) then
+                  fname = fviname
+                  write (iur) fname
+               endif
+            endif
+! write out ion time history array sizes and data
+            if (itv > 0) then
+               if ((ndv==2).or.(ndv==3)) then
+                  it = size(fvtmi,2)
+                  write (iur) size(fvtmi,1), it, size(fvtmi,3)
+                  write (iur) (((fvtmi(i,j,k),i=1,itv),j=1,it),k=1,3)
+               endif
             endif
          endif
       endif
@@ -1762,17 +2191,59 @@
 ! write out trajectory diagnostic parameter
       write (iur) ntt
       if (ntt > 0) then
-         if ((nst==1).or.(nst==2)) then
-            write (iur) itt
-! write out time history sizes and data
-            if (itt > 0) then
-               it = size(partd,2); is = size(partd,3)
-               write (iur) size(partd,1), it, is
-               write (iur) (((partd(i,j,k),i=1,itt),j=1,it),k=1,is)
+! electron or ion trajectories
+         if ((ndt==1).or.(ndt==2)) then
+! write out trajectory record location
+            write (iur) ntrec
+! write out record length (zero if error) and file name (if no error)
+            if (ntrec > 0) then
+               inquire(file=ftname,recl=it,iostat=ios)
+               if (ios /= 0) it = 0
+               write (iur) it
+               if (it > 0) then
+                  fname = ftname
+                  write (iur) fname
+               endif
             endif
-         else
-            it = 0
+! store particle trajectories
+            if ((nst==1).or.(nst==2)) then
+               write (iur) itt
+! write out time history sizes and data
+               if (itt > 0) then
+                  it = size(partd,2); is = size(partd,3)
+                  write (iur) size(partd,1), it, is
+                  write (iur) (((partd(i,j,k),i=1,itt),j=1,it),k=1,is)
+               endif
+            endif
+         endif
+      endif
+!
+! write out phase space diagnostic parameter
+      write (iur) nts
+      if (nts > 0) then
+! write out electron phase space record location
+         write (iur) nserec
+! write out record length (zero if error) and file name (if no error)
+         if (nserec > 0) then
+            it = size(fvs)
             write (iur) it
+            if (it > 0) then
+               fname = fsename
+               write (iur) fname
+            endif
+         endif
+         if (movion > 0) then
+! write out ion phase space record location
+            write (iur) nsirec
+! write out record length (zero if error) and file name (if no error)
+            if (nsirec > 0) then
+               it = size(fvsi)
+               write (iur) it
+               if (it > 0) then
+                  fname = fsiname
+                  write (iur) fname
+               endif
+            endif
          endif
       endif
       end subroutine
@@ -1784,7 +2255,7 @@
 ! iur = restart file descriptor
       integer, intent(in) :: iur
 ! local data
-      integer :: i, j, k, it, is, ir, ios
+      integer :: i, j, k, nd, it, is, ir, ios
       character(len=32) :: fname
 ! read in energy diagnostic parameter
       read (iur,iostat=ios) it
@@ -1983,7 +2454,7 @@
       endif
 !
 ! read in ion density diagnostic parameter
-      if (movion==1) then
+      if (movion > 0) then
          read (iur,iostat=ios) it
          if (ios /= 0) then
             write (*,*) 'ntdi restart error, ios = ', ios
@@ -2062,10 +2533,9 @@
          stop
       endif
       if (it /= ntfm) then
-         write (*,*) 'restart error: read/expected ntel=', it, ntfm
+         write (*,*) 'restart error: read/expected ntfm=', it, ntfm
          stop
       endif
-! read in electron data
       if (ntfm > 0) then
 ! read in electron record location
          read (iur,iostat=ios) nferec
@@ -2092,7 +2562,7 @@
             ffename = fname
          endif
 ! read in ion data
-         if (movion==1) then
+         if (movion > 0) then
 ! read in ion record location
             read (iur,iostat=ios) nfirec
             if (ios /= 0) then
@@ -2131,61 +2601,117 @@
          stop
       endif
       if (ntv > 0) then
-         read (iur,iostat=ios) itv
+! read in electron record location
+         read (iur,iostat=ios) nverec
+         if (ios /= 0) then
+            write (*,*) 'nverec restart error, ios = ', ios
+            stop
+         endif
+! read in record length (zero if error) and file name (if no error)
+         if (nverec > 0) then
+            read (iur,iostat=ios) it
+            if (ios /= 0) then
+               write (*,*) 'ntv record length error, ios = ', ios
+               stop
+            endif
+            if (it==0) then
+               write (*,*) 'ntv zero length record error'
+               stop
+            endif
+            read (iur,iostat=ios) fname
+            if (ios /= 0) then
+               write (*,*) 'ntv file name error, ios = ', ios
+               stop
+            endif
+            fvename = fname
+         endif
+         read (iur,iostat=ios) itv, nd
          if (ios /= 0) then
             write (*,*) 'itv restart error, ios = ', ios
             stop
          endif
-! read in time history array sizes and data
+! read in electron time history array sizes and data
          if (itv > 0) then
-            read (iur,iostat=ios) is, it, ir
-            if (ios /= 0) then
-               write (*,*) 'ntv restart array size error, ios = ', ios
-               stop
-            endif
-            if (is /= mtv) then
-               write (*,*) 'restart error: read/expected mtv=', is, mtv
-               stop
-            endif
-            if (it /= ndim) then
-               write (*,*) 'fvtm size error read/expected ndim=', it,   &
-     &ndim
-               stop
-            endif
-            if (ir /= 3) then
-               write (*,*) 'fvtm size error read/expected 3=', ir
-               stop
-            endif
-            read (iur,iostat=ios) (((fvtm(i,j,k),i=1,itv),j=1,it),k=1,3)
-            if (ios /= 0) then
-               write (*,*) 'fvtm array read error, ios = ', ios
-               stop
-            endif
-            if (movion==1) then
+            if ((nd==1).or.(nd==3)) then
                read (iur,iostat=ios) is, it, ir
                if (ios /= 0) then
-                  write (*,*) 'ntv ion restart array size error, ios = ', ios
+                  write (*,*) 'ntv restart array size error, ios = ',ios
                   stop
                endif
                if (is /= mtv) then
-                  write (*,*) 'ion restart error: read/expected mtv=',  &
-     &is, mtv
+                  write (*,*) 'restart error: read/expected mtv=',is,mtv
                   stop
                endif
                if (it /= ndim) then
-                  write (*,*) 'fvtmi size error read/expected ndim=', it&
-     &, ndim
+                  write (*,*) 'fvtm size error read/expected ndim=', it,&
+     &ndim
                   stop
                endif
                if (ir /= 3) then
-                  write (*,*) 'fvtmi size error read/expected 3=', ir
+                  write (*,*) 'fvtm size error read/expected 3=', ir
                   stop
                endif
-               read (iur,iostat=ios) (((fvtmi(i,j,k),i=1,itv),j=1,it),  &
-     &k=1,3)
+               read (iur,iostat=ios) (((fvtm(i,j,k),i=1,itv),j=1,it),k=1,3)
                if (ios /= 0) then
-                  write (*,*) 'fvtmi array read error, ios = ', ios
+                  write (*,*) 'fvtm array read error, ios = ', ios
                   stop
+               endif
+            endif
+         endif
+         if (movion > 0) then
+! read in ion record location
+            read (iur,iostat=ios) nvirec
+            if (ios /= 0) then
+               write (*,*) 'nvirec restart error, ios = ', ios
+               stop
+            endif
+! read in record length (zero if error) and file name (if no error)
+            if (nvirec > 0) then
+               read (iur,iostat=ios) it
+               if (ios /= 0) then
+                  write (*,*) 'ntv ion record length error, ios = ', ios
+                  stop
+               endif
+               if (it==0) then
+                  write (*,*) 'ntv ion zero length record error'
+                  stop
+               endif
+               read (iur,iostat=ios) fname
+               if (ios /= 0) then
+                  write (*,*) 'ntv ion file name error, ios = ', ios
+                  stop
+               endif
+               fviname = fname
+            endif
+! read in ion time history array sizes and data
+            if (itv > 0) then
+               if ((nd==2).or.(nd==3)) then
+                  read (iur,iostat=ios) is, it, ir
+                  if (ios /= 0) then
+                     write (*,*) 'ntvi restart array size error,ios= ', &
+     &ios
+                     stop 
+                  endif
+                  if (is /= mtv) then
+                     write (*,*) 'ion restart error: read/expected mtv='&
+     &, is, mtv
+                     stop
+                  endif
+                  if (it /= ndim) then
+                     write (*,*) 'fvtmi size error read/expected ndim=',&
+     & it, ndim
+                     stop
+                  endif
+                  if (ir /= 3) then
+                     write (*,*) 'fvtmi size error read/expected 3=', ir
+                     stop
+                  endif
+                  read (iur,iostat=ios) (((fvtmi(i,j,k),i=1,itv),j=1,it)&
+     &,k=1,3)
+                  if (ios /= 0) then
+                     write (*,*) 'fvtmi array read error, ios = ', ios
+                     stop
+                  endif
                endif
             endif
          endif
@@ -2202,44 +2728,141 @@
          stop
       endif
       if (ntt > 0) then
-         read (iur,iostat=ios) itt
-         if (ios /= 0) then
-            write (*,*) 'itt restart error, ios = ', ios
-            stop
-         endif
-! read in time history sizes and data
-         if (itt > 0) then
+! electron or ion trajectories
+         if ((ndt==1).or.(ndt==2)) then
+! read in trajectory record location
+            read (iur,iostat=ios) ntrec
+            if (ios /= 0) then
+               write (*,*) 'ntrec restart error, ios = ', ios
+               stop
+            endif
+! read in record length (zero if error) and file name (if no error)
+            if (ntrec > 0) then
+               read (iur,iostat=ios) it
+               if (ios /= 0) then
+                  write (*,*) 'ntt record length error, ios = ', ios
+                  stop
+               endif
+               if (it==0) then
+                  write (*,*) 'ntt zero length record error'
+                  stop
+               endif
+               read (iur,iostat=ios) fname
+               if (ios /= 0) then
+                  write (*,*) 'ntt file name error, ios = ', ios
+                  stop
+               endif
+               ftname = fname
+            endif
+! restore particle trajectories
             if ((nst==1).or.(nst==2)) then
-               read (iur,iostat=ios) ir, it, is
+               read (iur,iostat=ios) itt
                if (ios /= 0) then
-                  write (*,*) 'ntt restart array size error, ios = ',   &
+                  write (*,*) 'itt restart error, ios = ', ios
+                  stop
+               endif
+! read in time history sizes and data
+               if (itt > 0) then
+                  read (iur,iostat=ios) ir, it, is
+                  if (ios /= 0) then
+                     write (*,*) 'ntt restart array size error, ios = ',&
      &ios
-                  stop
-               endif
-               if (ir /= mtt) then
-                  write (*,*) 'restart error: read/expected mtt=', ir,  &
-     &mtt
-                  stop
-               endif
-               if (it /= idimp) then
-                  write (*,*) 'partd size error read/expected idimp=',  &
-     &it, size(partd,2)
-                  stop
-               endif
-               if (is /= nprobt) then
-                  write (*,*) 'partd size error read/expected nprobt=', &
+                     stop
+                  endif
+                  if (ir /= mtt) then
+                     write (*,*) 'restart error: read/expected mtt=', ir&
+     &,mtt
+                     stop
+                  endif
+                  if (it /= idimp) then
+                     write (*,*) 'partd size error read/expected idimp='&
+     &,it, size(partd,2)
+                     stop
+                  endif
+                  if (is /= nprobt) then
+                     write (*,*) 'partd size err read/expected nprobt=',&
      &is, nprobt
-                  stop
-               endif
-               read (iur,iostat=ios) (((partd(i,j,k),i=1,itt),j=1,it),  &
-     &k=1,is)
-               if (ios /= 0) then
-                  write (*,*) 'partd array read error, ios = ', ios
-                  stop
+                     stop
+                  endif
+                  read (iur,iostat=ios) (((partd(i,j,k),i=1,itt),j=1,it)&
+     &,k=1,is)
+                  if (ios /= 0) then
+                     write (*,*) 'partd array read error, ios = ', ios
+                     stop
+                  endif
                endif
             endif
          endif
       endif
+!
+! read in phase space diagnostic parameter
+      read (iur,iostat=ios) it
+      if (ios /= 0) then
+         write (*,*) 'nts restart error, ios = ', ios
+         stop
+      endif
+      if (it /= nts) then
+         write (*,*) 'restart error: read/expected nts=', it, nts
+         stop
+      endif
+      if (nts > 0) then
+! read in electron record location
+         read (iur,iostat=ios) nserec
+         if (ios /= 0) then
+            write (*,*) 'nserec restart error, ios = ', ios
+            stop
+         endif
+! read in record length (zero if error) and file name (if no error)
+         if (nserec > 0) then
+            read (iur,iostat=ios) it
+            if (ios /= 0) then
+               write (*,*) 'nts record length error, ios = ', ios
+               stop
+            endif
+            if (it==0) then
+               write (*,*) 'nts zero length record error'
+               stop
+            endif
+            read (iur,iostat=ios) fname
+            if (ios /= 0) then
+               write (*,*) 'nts file name error, ios = ', ios
+               stop
+            endif
+            fsename = fname
+! reposition stream file
+            call fnsets1(nserec-1,it,fsename)
+         endif
+! read in ion data
+         if (movion > 0) then
+! read in ion record location
+            read (iur,iostat=ios) nsirec
+            if (ios /= 0) then
+               write (*,*) 'nsirec restart error, ios = ', ios
+               stop
+            endif
+! read in ion record length (zero if error) and file name (if no error)
+            if (nsirec > 0) then
+               read (iur,iostat=ios) it
+               if (ios /= 0) then
+                  write (*,*) 'nts ion record length error, ios = ',ios
+                  stop
+               endif
+               if (it==0) then
+                  write (*,*) 'nts zero length ion record error'
+                  stop
+               endif
+               read (iur,iostat=ios) fname
+               if (ios /= 0) then
+                  write (*,*) 'nts ion file name error, ios = ', ios
+                  stop
+               endif
+               fsiname = fname
+! reposition stream file
+               call fnsets1(nsirec-1,it,fsiname)
+            endif
+         endif
+      endif
+!
       end subroutine
 !
 !-----------------------------------------------------------------------
@@ -2247,7 +2870,7 @@
 ! close reset and restart files
       implicit none
 ! iur, iurr = restart, reset, old restart file descriptors
-      close(unit=iurr)
+!     close(unit=iurr)
       if (nustrt==1) then
          if (ntr > 0) close(unit=iur)
       else if (nustrt==2) then

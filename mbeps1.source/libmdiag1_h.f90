@@ -68,6 +68,19 @@
       end interface
 !
       interface
+         subroutine VBPDIST13(ppart,kpic,sfv,fvm,omx,omy,omz,idimp,nppmx&
+     &,mx1,np,nmv,nmvf)
+         implicit none
+         integer, intent(in) :: idimp, nppmx, mx1, np, nmv, nmvf
+         real, intent(in) :: omx, omy, omz
+         real, dimension(idimp,nppmx,mx1), intent(in) :: ppart
+         integer, dimension(mx1), intent(in) :: kpic
+         real, dimension(nmvf,3,mx1+1), intent(inout) :: sfv
+         real, dimension(3,2), intent(inout) :: fvm
+         end subroutine
+      end interface
+!
+      interface
          subroutine ERPDIST1(ppart,kpic,sfv,ci,wk,idimp,nppmx,mx1,nmv,  &
      &nmvf)
          implicit none
@@ -94,7 +107,32 @@
       end interface
 !
       interface
+         subroutine PVSDIST1(ppart,kpic,fvs,nmv,mvx,nxb,idimp,nppmx,mx1,&
+     &nmvf)
+         implicit none
+         integer, intent(in) :: nmv, mvx, nxb
+         integer, intent(in) :: idimp, nppmx, mx1, nmvf
+         real, dimension(idimp,nppmx,mx1), intent(in) :: ppart
+         real, dimension(nmvf,nxb), intent(inout) :: fvs
+         integer, dimension(mx1), intent(in) :: kpic
+         end subroutine
+      end interface
+!
+      interface
+         subroutine PVSDIST13(ppart,kpic,fvs,nmv,mvx,nxb,idimp,nppmx,mx1&
+       &,nmvf)
+         implicit none
+         integer, intent(in) :: nmv, mvx, nxb
+         integer, intent(in) :: idimp, nppmx, mx1, nmvf
+         real, dimension(idimp,nppmx,mx1), intent(in) :: ppart
+         real, dimension(nmvf,3,nxb), intent(inout) :: fvs
+         integer, dimension(mx1), intent(in) :: kpic
+         end subroutine
+      end interface
+!
+      interface
          subroutine VDIST1(part,fv,fvm,idimp,np,nmv,nmvf)
+         implicit none
          integer, intent(in) :: idimp, np, nmv, nmvf
          real, dimension(idimp,np), intent(in) :: part
          real, dimension(nmvf), intent(inout) :: fv
@@ -104,10 +142,22 @@
 !
       interface
          subroutine VDIST13(part,fv,fvm,idimp,np,nmv,nmvf)
+         implicit none
          integer, intent(in) :: idimp, np, nmv, nmvf
          real, dimension(idimp,np), intent(in) :: part
          real, dimension(nmvf,3), intent(inout) :: fv
          real, dimension(3,3), intent(inout) :: fvm
+         end subroutine
+      end interface
+!
+      interface
+         subroutine VBDIST13(part,fv,fvm,omx,omy,omz,idimp,np,nmv,nmvf)
+         implicit none
+         integer, intent(in) :: idimp, np, nmv, nmvf
+         real, intent(in) :: omx, omy, omz
+         real, dimension(idimp,np), intent(in) :: part
+         real, dimension(nmvf,2), intent(inout) :: fv
+         real, dimension(2,2), intent(inout) :: fvm
          end subroutine
       end interface
 !

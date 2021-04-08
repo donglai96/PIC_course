@@ -15,7 +15,7 @@
 ! ASCFGUARD1L add scaled vector field to extended periodic field
 ! written by Viktor K. Decyk, UCLA
 ! copyright 2016, regents of the university of california
-! update: december 6, 2017
+! update: february 4, 2021
 !-----------------------------------------------------------------------
       subroutine FWPMINMX1(qe,qbme,wpmax,wpmin,nx,nxe)
 ! calculates maximum and minimum plasma frequency.  assumes guard cells
@@ -73,7 +73,7 @@ c local data
 ! and acceleration density using first-order spline interpolation.
 ! OpenMP version using guard cells
 ! data read/written in tiles
-! particles stored segmented array
+! particles stored in segmented array
 ! 100 flops/particle, 1 divide, 12 loads, 8 stores
 ! input: all, output: dcu, amu
 ! acceleration density is approximated by values at the nearest grid
@@ -169,10 +169,10 @@ c local data
 ! error if local array is too small
 !     if (mx.ge.MXV) return
 ! loop over tiles
-!$OMP PARALLEL DO
-!$OMP& PRIVATE(j,k,noff,npp,nn,x,dxp,amx,dx,dy,dz,ox,oy,oz,vx,vy,vz,acx,
-!$OMP& acy,acz,v1,v2,omxt,omyt,omzt,omt,anorm,rot1,rot2,rot3,rot4,rot5, 
-!$OMP& rot6,rot7,rot8,rot9,sfxyz,sbyz,samu,sdcu)
+!$OMP PARALLEL DO                                                       &
+!$OMP& PRIVATE(j,k,noff,npp,nn,x,dxp,amx,dx,dy,dz,ox,oy,oz,vx,vy,vz,acx,&
+!$OMP& acy,acz,v1,v2,omxt,omyt,omzt,omt,anorm,rot1,rot2,rot3,rot4,rot5, &
+!$OMP& rot6,rot7,rot8,rot9,sfxyz,sbyz,samu,sdcu) SCHEDULE(dynamic)
       do 60 k = 1, mx1
       noff = mx*(k - 1)
       npp = kpic(k)
@@ -303,7 +303,7 @@ c local data
 ! interpolation.
 ! OpenMP version using guard cells
 ! data read/written in tiles
-! particles stored segmented array
+! particles stored in segmented array
 ! 108 flops/particle, 1 divide, 16 loads, 12 stores
 ! input: all, output: cu, dcu, amu
 ! current density is approximated by values at the nearest grid points
@@ -406,10 +406,10 @@ c local data
 ! error if local array is too small
 !     if (mx.ge.MXV) return
 ! loop over tiles
-!$OMP PARALLEL DO
-!$OMP& PRIVATE(j,k,noff,npp,nn,x,dxp,amx,dx,dy,dz,ox,oy,oz,vx,vy,vz,acx,
-!$OMP& acy,acz,v1,v2,omxt,omyt,omzt,omt,anorm,rot1,rot2,rot3,rot4,rot5, 
-!$OMP& rot6,rot7,rot8,rot9,sfxyz,sbyz,samu,sdcu,scu)
+!$OMP PARALLEL DO                                                       &
+!$OMP& PRIVATE(j,k,noff,npp,nn,x,dxp,amx,dx,dy,dz,ox,oy,oz,vx,vy,vz,acx,&
+!$OMP& acy,acz,v1,v2,omxt,omyt,omzt,omt,anorm,rot1,rot2,rot3,rot4,rot5, &
+!$OMP& rot6,rot7,rot8,rot9,sfxyz,sbyz,samu,sdcu,scu) SCHEDULE(dynamic)
       do 60 k = 1, mx1
       noff = mx*(k - 1)
       npp = kpic(k)
@@ -557,7 +557,7 @@ c local data
 ! for relativistic particles.
 ! OpenMP version using guard cells
 ! data read/written in tiles
-! particles stored segmented array
+! particles stored in segmented array
 ! 120 flops/particle, 2 divide, 1 sqrt, 16 loads, 12 stores
 ! input: all, output: dcu, amu
 ! acceleration density is approximated by values at the nearest grid
@@ -660,10 +660,11 @@ c local data
 ! error if local array is too small
 !     if (mx.ge.MXV) return
 ! loop over tiles
-!$OMP PARALLEL DO
-!$OMP& PRIVATE(j,k,noff,npp,nn,x,dxp,amx,dx,dy,dz,ox,oy,oz,vx,vy,vz,acx,
-!$OMP& acy,acz,v1,v2,v3,omxt,omyt,omzt,omt,anorm,rot1,rot2,rot3,rot4,   
-!$OMP& rot5,rot6,rot7,rot8,rot9,p2,gami,qtmg,gh,sfxyz,sbyz,sdcu,samu)
+!$OMP PARALLEL DO                                                       &
+!$OMP& PRIVATE(j,k,noff,npp,nn,x,dxp,amx,dx,dy,dz,ox,oy,oz,vx,vy,vz,acx,&
+!$OMP& acy,acz,v1,v2,v3,omxt,omyt,omzt,omt,anorm,rot1,rot2,rot3,rot4,   &
+!$OMP& rot5,rot6,rot7,rot8,rot9,p2,gami,qtmg,gh,sfxyz,sbyz,sdcu,samu)   &
+!$OMP& SCHEDULE(dynamic)
       do 60 k = 1, mx1
       noff = mx*(k - 1)
       npp = kpic(k)
@@ -804,7 +805,7 @@ c local data
 ! interpolation for relativistic particles.
 ! OpenMP version using guard cells
 ! data read/written in tiles
-! particles stored segmented array
+! particles stored in segmented array
 ! 128 flops/particle, 2 divide, 1 sqrt, 16 loads, 12 stores
 ! input: all, output: cu, dcu, amu
 ! current density is approximated by values at the nearest grid points
@@ -915,11 +916,11 @@ c local data
 ! error if local array is too small
 !     if (mx.ge.MXV) return
 ! loop over tiles
-!$OMP PARALLEL DO
-!$OMP& PRIVATE(j,k,noff,npp,nn,x,dxp,amx,dx,dy,dz,ox,oy,oz,vx,vy,vz,acx,
-!$OMP& acy,acz,v1,v2,v3,omxt,omyt,omzt,omt,anorm,rot1,rot2,rot3,rot4,   
-!$OMP& rot5,rot6,rot7,rot8,rot9,p2,gami,qtmg,gh,sfxyz,sbyz,samu,sdcu,   
-!$OMP& scu)
+!$OMP PARALLEL DO                                                       &
+!$OMP& PRIVATE(j,k,noff,npp,nn,x,dxp,amx,dx,dy,dz,ox,oy,oz,vx,vy,vz,acx,&
+!$OMP& acy,acz,v1,v2,v3,omxt,omyt,omzt,omt,anorm,rot1,rot2,rot3,rot4,   &
+!$OMP& rot5,rot6,rot7,rot8,rot9,p2,gami,qtmg,gh,sfxyz,sbyz,samu,sdcu,   &
+!$OMP& scu) SCHEDULE(dynamic)
       do 60 k = 1, mx1
       noff = mx*(k - 1)
       npp = kpic(k)

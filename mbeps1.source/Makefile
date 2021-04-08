@@ -12,6 +12,9 @@
 #FC90 = gfortran
 #CC = gcc
 
+#PFC = f2py --fcompiler=gnu95
+#PCC = f2py --compiler=unix
+
 #OPTS90 = -O3
 #OPTS90 = -O3 -fdefault-real-8 -fdefault-double-8
 #OPTS90 = -O3 -fcheck=bounds -fdefault-real-8 -fdefault-double-8 -Wall -std=f95
@@ -22,9 +25,13 @@
 #Python
 #PYOPTS90 = $(OPTS90) -fPIC
 #PYCCOPTS = $(CCOPTS) -fPIC
+#export CFLAGS = -O3 -fopenmp
+#export CFLAGS = -O3 -fopenmp -Wall
 
 #LOPTS = -lgomp
-#LEGACY =
+#LGOPTS = -lYgl -L/usr/X11R6/lib -lX11
+#LGOPTS = gks1/Ygl-4.2/libYgl.a -L/usr/X11R6/lib -lX11
+#LEGACY = -std=legacy
 
 # Makefile Intel compiler with Mac OS X
 
@@ -47,7 +54,7 @@
 
 #FF03 = -Tf
 
-#LEGACY =
+#NOMAIN = -nofor_main
 
 # Makefile Intel compiler with Linux
 
@@ -70,7 +77,7 @@
 
 #FF03 = -Tf
 
-#LEGACY =
+#NOMAIN = -nofor_main
 
 # Makefile gfortran compiler with Linux
 
@@ -83,10 +90,8 @@ MPCC = gcc -fopenmp
 
 CC = gcc
 
-PYTHON = python
-F2PY = $(PYTHON) f2py 
-PFC = $(F2PY) --fcompiler=gnu95
-PCC = $(F2PY) --compiler=unix
+PFC = f2py --fcompiler=gnu95
+PCC = f2py --compiler=unix
 
 OPTS90 = -O3
 #OPTS90 = -O3 -fdefault-real-8 -fdefault-double-8
@@ -99,14 +104,13 @@ CCOPTS = -O3 -std=c99
 #Python
 PYOPTS90 = $(OPTS90) -fPIC
 PYCCOPTS = $(CCOPTS) -fPIC
-
 #export CFLAGS = -O3 -fopenmp
 #export CFLAGS = -O3 -fopenmp -Wall
 
 LOPTS = -lgomp
 #LGOPTS = -lYgl -L/usr/X11R6/lib -lX11
 #LGOPTS = gks1/Ygl-4.2/libYgl.a -L/usr/X11R6/lib -lX11
-LEGACY =
+LEGACY = -std=legacy
 
 # Makefile PGI compiler with Linux
 
@@ -124,7 +128,7 @@ LEGACY =
 #CCOPTS = -O3 -std=c99
 #CCOPTS = -O3 -Wall -std=c99
 
-#LEGACY =
+#NOMAIN = -Mnomain
 
 # Makefile Nag compiler with Linux
 
@@ -140,8 +144,6 @@ LEGACY =
 #OPTS90 = -O3 -default_kinds:r=64 -C=array -nan -w=all -f95
 
 #CCOPTS = -O3 -Wall -std=c99
-
-#LEGACY =
 
 # Makefile Cray compiler with Linux
 
@@ -160,8 +162,6 @@ LEGACY =
 #OPTS90 = -O 3 -R b -s real64 -en
 
 #CCOPTS = -O 3 -h c99 -h conform
-
-#LEGACY =
 
 #
 
@@ -197,12 +197,6 @@ EDMODS = modmdpush1.o
 #GOBJS = libygl.o dlibgks1.o libgks1.o libgraf1_h.o modgraf1.o
 #No graphics
 GOBJS = nullgks1.o libgraf1_h.o modgraf1.o
-
-#GOBJS = libt1.o plot10.o libplt10.o dlibgks1.o libgks1.o libgraf1_h.o \
-#modgraf1.o libgks2.o libgraf2_h.o modgraf2.o
-#No graphics
-#GOBJS = nullgks1.o nullgks2.o libgraf1_h.o modgraf1.o libgraf2_h.o \
-#modgraf2.o
 
 # Python
 
@@ -361,7 +355,7 @@ modmfft1.o : modmfft1.f90 libmfft1_h.o
 modmfield1.o : modmfield1.f90 libmfield1_h.o
 	$(MPFC) $(OPTS90) -o modmfield1.o -c modmfield1.f90
 
-modmdiag1.o : modmdiag1.f90 libmdiag1_h.o
+modmdiag1.o : modmdiag1.f90 libmdiag1_h.o input1mod.o
 	$(MPFC) $(OPTS90) -o modmdiag1.o -c modmdiag1.f90
 
 msimul1.o : msimul1.f03 $(ESMODS)
@@ -468,7 +462,7 @@ dtimer.so : dtimer_h.pyf dtimer.c
 	$(PCC) -m dtimer -c dtimer_h.pyf dtimer.c
 
 dtimer_h.pyf : dtimer_hpy.f90
-	$(F2PY) --overwrite-signature -m dtimer -h dtimer_h.pyf dtimer_hpy.f90
+	f2py --overwrite-signature -m dtimer -h dtimer_h.pyf dtimer_hpy.f90
 
 fomplib.so : omplib.f90
 	$(PFC) --f90flags="$(OPTS90)" $(LOPTS) -m fomplib -c omplib.f90

@@ -36,7 +36,7 @@
 ! GPPOST1L calculates particle charge density using linear interpolation
 ! written by Viktor K. Decyk, UCLA
 ! copyright 2016, regents of the university of california
-! update: january 21, 2017
+! update: february 4, 2021
 !-----------------------------------------------------------------------
       subroutine PPMOVIN1L(part,ppart,kpic,nppmx,idimp,nop,mx,mx1,irc)
 ! this subroutine sorts particles by x grid in tiles of mx and copies
@@ -191,7 +191,8 @@
       integer noff, npp, j, k, ist, nn
       real edgelx, edgerx, dx
 ! loop over tiles
-! !$OMP PARALLEL DO PRIVATE(j,k,noff,npp,nn,ist,edgelx,edgerx,dx)
+!$OMP PARALLEL DO PRIVATE(j,k,noff,npp,nn,ist,edgelx,edgerx,dx)         &
+!$OMP& SCHEDULE(dynamic)
       do 20 k = 1, mx1
       noff = mx*(k - 1)
       npp = kpic(k)
@@ -208,7 +209,7 @@
       if (ist.gt.0) irc = k
    10 continue
    20 continue
-! !$OMP END PARALLEL DO
+!$OMP END PARALLEL DO
       return
       end
 !-----------------------------------------------------------------------
@@ -219,7 +220,7 @@
 ! in space, with various boundary conditions.
 ! OpenMP version using guard cells
 ! data read in tiles
-! particles stored segmented array
+! particles stored in segmented array
 ! 16 flops/particle, 4 loads, 2 stores
 ! input: all, output: ppart, ek
 ! equations used are:
@@ -274,8 +275,9 @@
 ! error if local array is too small
 !     if (mx.ge.MXV) return
 ! loop over tiles
-!$OMP PARALLEL DO
-!$OMP& PRIVATE(j,k,noff,npp,nn,x,dx,vx,sum1,sfx) REDUCTION(+:sum2)
+!$OMP PARALLEL DO                                                       &
+!$OMP& PRIVATE(j,k,noff,npp,nn,x,dx,vx,sum1,sfx) REDUCTION(+:sum2)      &
+!$OMP& SCHEDULE(dynamic)
       do 30 k = 1, mx1
       noff = mx*(k - 1)
       npp = kpic(k)
@@ -328,7 +330,7 @@
 ! also determines list of particles which are leaving this tile
 ! OpenMP version using guard cells
 ! data read in tiles
-! particles stored segmented array
+! particles stored in segmented array
 ! 16 flops/particle, 4 loads, 2 stores
 ! input: all except ncl, ihole, irc, output: ppart, ncl, ihole, ek, irc
 ! equations used are:
@@ -383,9 +385,9 @@
 ! error if local array is too small
 !     if (mx.ge.MXV) return
 ! loop over tiles
-!$OMP PARALLEL DO
-!$OMP& PRIVATE(j,k,noff,npp,nn,ih,nh,x,dx,vx,edgelx,edgerx,sum1,sfx)
-!$OMP& REDUCTION(+:sum2)
+!$OMP PARALLEL DO                                                       &
+!$OMP& PRIVATE(j,k,noff,npp,nn,ih,nh,x,dx,vx,edgelx,edgerx,sum1,sfx)    &
+!$OMP& REDUCTION(+:sum2) SCHEDULE(dynamic)
       do 40 k = 1, mx1
       noff = mx*(k - 1)
       npp = kpic(k)
@@ -480,7 +482,7 @@
 ! with various boundary conditions.
 ! OpenMP version using guard cells
 ! data read in tiles
-! particles stored segmented array
+! particles stored in segmented array
 ! 21 flops/particle, 2 divides, 2 sqrts, 4 loads, 2 stores
 ! input: all, output: ppart, ek
 ! equations used are:
@@ -540,9 +542,9 @@
 ! error if local array is too small
 !     if (mx.ge.MXV) return
 ! loop over tiles
-!$OMP PARALLEL DO
-!$OMP& PRIVATE(j,k,noff,npp,nn,x,dx,acx,p2,dtg,sum1,sfx)
-!$OMP& REDUCTION(+:sum2)
+!$OMP PARALLEL DO                                                       &
+!$OMP& PRIVATE(j,k,noff,npp,nn,x,dx,acx,p2,dtg,sum1,sfx)                &
+!$OMP& REDUCTION(+:sum2) SCHEDULE(dynamic)
       do 30 k = 1, mx1
       noff = mx*(k - 1)
       npp = kpic(k)
@@ -602,7 +604,7 @@
 ! also determines list of particles which are leaving this tile
 ! OpenMP version using guard cells
 ! data read in tiles
-! particles stored segmented array
+! particles stored in segmented array
 ! 21 flops/particle, 2 divides, 2 sqrts, 4 loads, 2 stores
 ! input: all except ncl, ihole, irc, output: ppart, ncl, ihole, ek, irc
 ! equations used are:
@@ -662,9 +664,9 @@
 ! error if local array is too small
 !     if (mx.ge.MXV) return
 ! loop over tiles
-!$OMP PARALLEL DO
-!$OMP& PRIVATE(j,k,noff,npp,nn,ih,nh,x,dx,edgelx,edgerx,acx,p2,dtg,sum1,
-!$OMP& sfx) REDUCTION(+:sum2)
+!$OMP PARALLEL DO                                                       &
+!$OMP& PRIVATE(j,k,noff,npp,nn,ih,nh,x,dx,edgelx,edgerx,acx,p2,dtg,sum1,&
+!$OMP& sfx) REDUCTION(+:sum2) SCHEDULE(dynamic)
       do 40 k = 1, mx1
       noff = mx*(k - 1)
       npp = kpic(k)
@@ -798,8 +800,8 @@
          edgerx = real(nx-1)
       endif
 ! loop over tiles
-!$OMP PARALLEL DO
-!$OMP& PRIVATE(j,k,npp,dx,sum1) REDUCTION(+:sum2)
+!$OMP PARALLEL DO                                                       &
+!$OMP& PRIVATE(j,k,npp,dx,sum1) REDUCTION(+:sum2) SCHEDULE(dynamic)
       do 20 k = 1, mx1
       npp = kpic(k)
       sum1 = 0.0d0
@@ -873,9 +875,9 @@
       anx = real(nx)
       sum2 = 0.0d0
 ! loop over tiles
-!$OMP PARALLEL DO
-!$OMP& PRIVATE(j,k,noff,npp,nn,ih,nh,dx,edgelx,edgerx,sum1)
-!$OMP& REDUCTION(+:sum2)
+!$OMP PARALLEL DO                                                       &
+!$OMP& PRIVATE(j,k,noff,npp,nn,ih,nh,dx,edgelx,edgerx,sum1)             &
+!$OMP& REDUCTION(+:sum2) SCHEDULE(dynamic)
       do 30 k = 1, mx1
       noff = mx*(k - 1)
       npp = kpic(k)
@@ -993,8 +995,9 @@
          edgerx = real(nx-1)
       endif
 ! loop over tiles
-!$OMP PARALLEL DO
-!$OMP& PRIVATE(j,k,npp,dx,p2,gam,dtg,sum1) REDUCTION(+:sum2)
+!$OMP PARALLEL DO                                                       &
+!$OMP& PRIVATE(j,k,npp,dx,p2,gam,dtg,sum1) REDUCTION(+:sum2)            &
+!$OMP& SCHEDULE(dynamic)
       do 20 k = 1, mx1
       npp = kpic(k)
       sum1 = 0.0d0
@@ -1077,9 +1080,9 @@
       anx = real(nx)
       sum2 = 0.0d0
 ! loop over tiles
-!$OMP PARALLEL DO
-!$OMP& PRIVATE(j,k,noff,npp,nn,ih,nh,dx,p2,gam,dtg,edgelx,edgerx,sum1)
-!$OMP& REDUCTION(+:sum2)
+!$OMP PARALLEL DO                                                       &
+!$OMP& PRIVATE(j,k,noff,npp,nn,ih,nh,dx,p2,gam,dtg,edgelx,edgerx,sum1)  &
+!$OMP& REDUCTION(+:sum2) SCHEDULE(dynamic)
       do 30 k = 1, mx1
       noff = mx*(k - 1)
       npp = kpic(k)
@@ -1161,7 +1164,7 @@
 ! using first-order linear interpolation, periodic boundaries
 ! OpenMP version using guard cells
 ! data deposited in tiles
-! particles stored segmented array
+! particles stored in segmented array
 ! 7 flops/particle, 3 loads, 3 stores
 ! input: all, output: q
 ! charge density is approximated by values at the nearest grid points
@@ -1195,7 +1198,7 @@
 ! error if local array is too small
 !     if (mx.ge.MXV) return
 ! loop over tiles
-!$OMP PARALLEL DO PRIVATE(j,k,noff,npp,nn,x,dx,sq)
+!$OMP PARALLEL DO PRIVATE(j,k,noff,npp,nn,x,dx,sq) SCHEDULE(dynamic)
       do 40 k = 1, mx1
       noff = mx*(k - 1)
       npp = kpic(k)

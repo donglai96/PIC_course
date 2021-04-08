@@ -88,9 +88,9 @@
 ! eyz/byz = transverse electric/magnetic field in fourier space
       call init_fields13()
 !
-! prepare fft tables
+! prepare fft tables: updates mixup, sct
       call mfft1_init(mixup,sct,indx)
-! calculate form factors
+! calculate form factors: updates ffc
       call mpois1_init(ffc,ax,affp,nx)
 ! initialize different ensemble of random numbers
       if (nextrand > 0) call mnextran1(nextrand,ndim,np+npi)
@@ -173,7 +173,7 @@
       if (nustrt==2) call dread_restart13(iur)
 !
 ! write reset file
-      call bwrite_restart13(iurr,ntime)
+!     call bwrite_restart13(iurr,ntime)
 !
 ! initialization time
       call dtimer(dtime,itime,1)
@@ -181,20 +181,20 @@
 ! start timing loop
       call dtimer(dtime,ltime,-1)
 !
-      if (dt > 0.64*ci) then
-         write (*,*) 'Warning: Courant condition may be exceeded!'
+      if (dt > 0.63*ci) then
+         write (*,*) 'Info: Courant condition may be exceeded!'
       endif
 !
       write (iuot,*) 'program mbbeps1'
 !
 ! debug reset
-   10 if (irc==6) then
-         irc = 0
-         call bread_restart13(iurr)
-         call reset_diags13()
-         dth = 0.0
-         cue = 0.0
-      endif
+!  10 if (irc==6) then
+!        irc = 0
+!        call bread_restart13(iurr)
+!        call reset_diags13()
+!        dth = 0.0
+!        cue = 0.0
+!     endif
 !
 ! * * * start main iteration loop * * *
 !
@@ -380,7 +380,10 @@
          call init_detfield13()
          dth = 0.5*dt
       else
-         call mmaxwel1(eyz,byz,cue,ffc,ci,dt,wf,wb,tfield,nx)
+! finite-difference solver
+!        call mmaxwel1(eyz,byz,cue,ffc,ci,dt,wf,wb,tfield,nx)
+! analytic solver
+         call mamaxwel1(eyz,byz,cue,ffc,ci,dt,wf,wb,tfield,nx)
       endif
 !
 ! calculate longitudinal force/charge in fourier space:
@@ -405,7 +408,8 @@
 !
 ! add external traveling wave field
       ts = dt*real(ntime)
-      call meaddext13(fxyze,tfield,amodex,freq,ts,trmp,toff,el0,er0,nx)
+      call meaddext13(fxyze,tfield,amodex,freq,ts,trmp,toff,el0,er0,ey0,&
+     &ez0,nx)
 !
 ! copy guard cells: updates fxyze, byze
       call mcguard1(fxyze,tguard,nx)
@@ -500,30 +504,65 @@
       if (ntv > 0) then
          it = ntime/ntv
          if (ntime==ntv*it) then
-! updates ppart, kpic, fv, fvm, fvtm
-            call evelocity_diag13(ppart,kpic,fv,fvm,fvtm)
+! updates fv, fe, fvm, fvtm, wkt
+            call evelocity_diag13(fv,fe,fvm,fvtm,wkt)
 ! display electron velocity distributions
-            call displayfv1(fv,fvm,' ELECTRON',ntime,nmv,2,irc)
-            if (irc==1) exit; irc = 0
+            if ((ndv==1).or.(ndv==3)) then
+               if ((nvft==1).or.(nvft==3)) then
+                  call displayfv1(fv,fvm,' ELECTRON',ntime,nmv,2,irc)
+                  if (irc==1) exit; irc = 0
+               endif
+! display electron velocity distributions in cylindrical co-ordinates
+               if ((nvft==4).or.(nvft==5)) then   
+                  call displayfvb1(fv,fvm,' ELECTRON',ntime,nmv,2,irc)  
+                  if (irc==1) exit; irc = 0    
+               endif
+! display electron energy distribution
+               if ((nvft==2).or.(nvft==3).or.(nvft==5)) then
+                  call displayfe1(fe,wkt,' ELECTRON',ntime,nmv,irc)
+                  if (irc==1) exit; irc = 0
+               endif
+            endif
 ! ion distribution function
             if (movion==1) then
-! updates pparti, kipic, fvi, fvmi, fvtmi
-               call ivelocity_diag13(pparti,kipic,fvi,fvmi,fvtmi)
+! updates fvi, fei, fvmi, fvtmi, wkt
+               call ivelocity_diag13(fvi,fei,fvmi,fvtmi,wkt)
 ! display ion velocity distributions
-               call displayfv1(fvi,fvmi,' ION',ntime,nmv,2,irc)
-               if (irc==1) exit; irc = 0
+               if ((ndv==2).or.(ndv==3)) then
+                  if ((nvft==1).or.(nvft==3)) then
+                     call displayfv1(fvi,fvmi,' ION',ntime,nmv,2,irc)
+                     if (irc==1) exit; irc = 0
+                  endif
+! display ion velocity distributions in cylindrical co-ordinates
+                  if ((nvft==4).or.(nvft==5)) then         
+                     call displayfvb1(fvi,fvmi,' ION',ntime,nmv,2,irc) 
+                     if (irc==1) exit; irc = 0 
+                  endif
+! display ion energy distribution
+                  if ((nvft==2).or.(nvft==3).or.(nvft==5)) then
+                     ts = fei(2*nmv+2,1)
+                     fei(2*nmv+2,1) = rmass*ts
+                     call displayfe1(fei,wkt,' ION',ntime,nmv,irc)
+                     if (irc==1) exit; irc = 0
+                     fei(2*nmv+2,1) = ts
+                  endif
+               endif
             endif
          endif
       endif
 !
-! trajectory diagnostic: updates ppart, kpic, partd, fvtp, fvmtp
+! trajectory diagnostic: updates partd, fvtp, fvmtp
       if (ntt > 0) then
          it = ntime/ntt
          if (ntime==ntt*it) then
-            call traj_diag13(ppart,kpic,partd,fvtp,fvmtp)
+            call traj_diag13(partd,fvtp,fvmtp)
             if (nst==3) then
 ! display test particle velocity distributions
-               call displayfv1(fvtp,fvmtp,' ELECTRON',ntime,nmv,2,irc)
+               if (ndt==1) then
+                  call displayfv1(fvtp,fvmtp,' ELECTRON',ntime,nmv,2,irc)
+               else if (ndt==2) then
+                  call displayfv1(fvtp,fvmtp,' ION',ntime,nmv,2,irc)
+               endif
                if (irc==1) exit; irc = 0
             endif
          endif
@@ -533,14 +572,16 @@
       if (nts > 0) then
          it = ntime/nts
          if (ntime==nts*it) then
+! calculate electron phase space distribution: updates fvs
+            call ephasesp_diag1(fvs)
 ! plot electrons
             if ((nds==1).or.(nds==3)) then
 ! vx, vy, or vz versus x
                nn = nsxv; ierr = 0
                do i = 1, 3
                   if (mod(nn,2)==1) then
-                     call dpmgrasp1(ppart,kpic,' ELECTRON',ntime,999,nx,&
-     &i+1,1,ntsc,irc)
+                     call dpmbgrasp1(ppart,kpic,' ELECTRON',ntime,999,  &
+     &omx,omy,omz,nx,i+1,1,ntsc,irc)
                      if (irc==1) then
                         ierr = 1
                         exit
@@ -554,8 +595,8 @@
                nn = nsvv; ierr = 0
                do i = 1, 3
                   if (mod(nn,2)==1) then
-                     call dpmgrasp1(ppart,kpic,' ELECTRON',ntime,999,nx,&
-     &min(i+2,4),max(i,2),ntsc,irc)
+                     call dpmbgrasp1(ppart,kpic,' ELECTRON',ntime,999,  &
+     &omx,omy,omz,nx,min(i+2,4),max(i,2),ntsc,irc)
                      if (irc==1) then
                         ierr = 1
                         exit
@@ -568,15 +609,16 @@
             endif
 ! ion phase space
             if (movion==1) then
+! calculate ion phase space distribution: updates fvsi
+               call iphasesp_diag1(fvsi)
 ! plot ions
                if ((nds==2).or.(nds==3)) then
 ! vx, vy, or vz versus x
                   nn = nsxv; ierr = 0
                   do i = 1, 3
                      if (mod(nn,2)==1) then
-                        call dpmgrasp1(pparti,kipic,' ION',ntime,999,nx,&
-     &i+1,1,ntsc,irc)
-
+                        call dpmbgrasp1(pparti,kipic,' ION',ntime,999,  &
+     &omx,omy,omz,nx,i+1,1,ntsc,irc)
                         if (irc==1) then
                            ierr = 1
                            exit
@@ -590,8 +632,8 @@
                   nn = nsvv; ierr = 0
                   do i = 1, 3
                      if (mod(nn,2)==1) then
-                        call dpmgrasp1(pparti,kipic,' ION',ntime,999,nx,&
-     &min(i+2,4),max(i,2),ntsc,irc)
+                        call dpmbgrasp1(pparti,kipic,' ION',ntime,999,  &
+     &omx,omy,omz,nx,min(i+2,4),max(i,2),ntsc,irc)
                         if (irc==1) then
                            ierr = 1
                            exit
@@ -622,7 +664,7 @@
          endif
       endif
 !
-! energy diagnostic
+! energy diagnostic: updates wt
       if (ntw > 0) then
          it = ntime/ntw
          if (ntime==ntw*it) then
@@ -651,6 +693,7 @@
 !
 ! * * * end main iteration loop * * *
 !
+!
       write (iuot,*)
       write (iuot,*) 'ntime, relativity = ', ntime, relativity
       if (treverse==1) write (iuot,*) 'treverse = ', treverse
@@ -666,7 +709,7 @@
       if (ntt > 0) then
          if ((nst==1).or.(nst==2)) then
             if (nplot > 0) irc = open_graphs(1)
-            call displaytr1(partd,t0,dt*real(ntt),itt,2,3,irc)
+            call displaytr1(partd,t0,dt*real(ntt),itt,2,999,irc)
             if (irc==1) stop
             call reset_nplot(nplot,irc)
          endif
@@ -682,12 +725,17 @@
 !
 ! velocity diagnostic
       if (ntv > 0) then
-         call displayfvt1(fvtm,' ELECT',t0,dt*real(ntv),itv,irc)
-         if (irc==1) stop
-! ions
-         if (movion==1) then
-            call displayfvt1(fvtmi,' ION',t0,dt*real(ntv),itv,irc)
+! display electron distribution time histories and entropy
+         if ((ndv==1).or.(ndv==3)) then
+            call displayfvt1(fvtm,' ELECT',t0,dt*real(ntv),itv,irc)
             if (irc==1) stop
+         endif
+! display ion distribution time histories and entropy
+         if (movion==1) then
+            if ((ndv==2).or.(ndv==3)) then
+               call displayfvt1(fvtmi,' ION',t0,dt*real(ntv),itv,irc)
+               if (irc==1) stop
+            endif
          endif
       endif
 !

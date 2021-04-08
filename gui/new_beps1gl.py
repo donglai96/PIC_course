@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys, os
 from lib import *
 import numpy as NP
@@ -14,7 +15,8 @@ from matplotlib.colors import LogNorm
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.backends.backend_wx import NavigationToolbar2Wx
-from mpl_toolkits.axes_grid.anchored_artists import AnchoredText
+from matplotlib.offsetbox import AnchoredText
+#from mpl_toolkits.axes_grid.anchored_artists import AnchoredText
 from collections import deque
 
 from defaults import *
@@ -71,6 +73,8 @@ class MainFrame(wx.Frame, Dispatcher, DefaultsCommLink):
         self.InitMenu()
         self.Bind(wx.EVT_ACTIVATE, self.OnFocus) # We rebuild the menu every focus to deal with Mac
         self.Show(True)
+#vkd:added to make control panel more visible
+        self.SetPosition((100,100))
 
     def OnFocus(self, event):
         wx.CallAfter(self.InitMenu)
@@ -93,7 +97,8 @@ class MainFrame(wx.Frame, Dispatcher, DefaultsCommLink):
         self.Destroy()
 
     def OnNewTime(self, event):
-        if self.worker.simdata.has_key('tend'):
+        if "tend" in self.worker.simdata:
+#       if self.worker.simdata.has_key('tend'):
             te = self.worker.simdata['tend']
             self.rpanel.timerText.SetLabel("Time is " + str(event.time) + " of " + str(te))
         else:
@@ -108,7 +113,7 @@ class MainFrame(wx.Frame, Dispatcher, DefaultsCommLink):
         if event.data.signame == "OPENFRAME":
             self.rpanel.makeNewFrame(event.data.layout, event.data.defaults)
         elif event.data.signame == "NEWDYNAMICVAR":
-            print "New Var " + event.data.varname
+            print ("New Var " + event.data.varname)
             self.rpanel.realTimeVars.append(event.data.varname)
 
     def OnResultPre(self, event):

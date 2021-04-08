@@ -1,3 +1,4 @@
+from __future__ import print_function
 import wx
 import wx.stc as stc
 from collections import deque
@@ -135,7 +136,7 @@ class NewFrame(wx.Frame, DefaultsCommLink):
             try:
                 self.mainframe.windowList.remove(self)
             except ValueError:
-                print "Could not remove frame from window list.  This should never happen!"
+                print ("Could not remove frame from window list.  This should never happen!")
                 exit(0)
 
         self.PruneDisplays(0)
@@ -159,6 +160,7 @@ class NewFrame(wx.Frame, DefaultsCommLink):
         self.SetSizerAndFit(self.sizer)
         self.Layout()
         self._GoodSize()
+        self.SetSize((700,575))
 
     def OnLayout2h(self, event):
         self.layoutName = "Layout2h"
@@ -170,6 +172,7 @@ class NewFrame(wx.Frame, DefaultsCommLink):
         self.SetSizerAndFit(self.sizer)
         self.Layout()
         self._GoodSize()
+#       self.SetSize((1400,575))
 
     def OnLayout2v(self, event):
         self.layoutName = "Layout2v"
@@ -177,10 +180,11 @@ class NewFrame(wx.Frame, DefaultsCommLink):
         self.RequestDisplays(2)
         self.sizer = wx.BoxSizer(wx.VERTICAL)
         for e in self.displayAreas:
-            self.sizer.Add(e, flag=wx.ALL | wx.EXPAND | wx.ALIGN_CENTER, proportion=1)
+            self.sizer.Add(e, flag=wx.ALL | wx.EXPAND, proportion=1)
         self.SetSizerAndFit(self.sizer)
         self.Layout()
         self._GoodSize()
+#       self.SetSize((700,1150))
 
     def ToggleNav(self, event):
         for d in self.displayAreas:
@@ -197,13 +201,14 @@ class NewFrame(wx.Frame, DefaultsCommLink):
         self.sizer = wx.BoxSizer(wx.VERTICAL)
         topRow = wx.BoxSizer(wx.HORIZONTAL)
         self.sizer.Add(topRow, flag=wx.ALL | wx.EXPAND, proportion=1)
-        self.sizer.Add(self.displayAreas[2], flag=wx.ALL | wx.EXPAND | wx.ALIGN_CENTER, proportion=1)
-        topRow.Add(self.displayAreas[0], flag=wx.ALL | wx.EXPAND | wx.ALIGN_CENTER, proportion=1)
-        topRow.Add(self.displayAreas[1], flag=wx.ALL | wx.EXPAND | wx.ALIGN_CENTER, proportion=1)
+        self.sizer.Add(self.displayAreas[2], flag=wx.ALL | wx.EXPAND, proportion=1)
+        topRow.Add(self.displayAreas[0], flag=wx.ALL | wx.EXPAND, proportion=1)
+        topRow.Add(self.displayAreas[1], flag=wx.ALL | wx.EXPAND, proportion=1)
 
         self.SetSizerAndFit(self.sizer)
         self.Layout()
         self._GoodSize()
+#       self.SetSize((1400,1150))
 
     def OnLayout4(self, event):
         self.layoutName = "Layout4"
@@ -213,14 +218,15 @@ class NewFrame(wx.Frame, DefaultsCommLink):
         topRow = wx.BoxSizer(wx.HORIZONTAL)
         botRow = wx.BoxSizer(wx.HORIZONTAL)
         self.sizer.Add(topRow, flag=wx.ALL | wx.EXPAND, proportion=1)
-        self.sizer.Add(botRow, flag=wx.ALL | wx.EXPAND | wx.ALIGN_CENTER, proportion=1)
+        self.sizer.Add(botRow, flag=wx.ALL | wx.EXPAND, proportion=1)
         for i in range(2):
-            topRow.Add(self.displayAreas[i], flag=wx.ALL | wx.EXPAND | wx.ALIGN_CENTER, proportion=1)
-            botRow.Add(self.displayAreas[i + 2], flag=wx.ALL | wx.EXPAND | wx.ALIGN_CENTER, proportion=1)
+            topRow.Add(self.displayAreas[i], flag=wx.ALL | wx.EXPAND, proportion=1)
+            botRow.Add(self.displayAreas[i + 2], flag=wx.ALL | wx.EXPAND, proportion=1)
 
         self.SetSizerAndFit(self.sizer)
         self.Layout()
         self._GoodSize()
+#       self.SetSize((1400,1150))
 
     def lockFrame(self):
         if (not hasattr(self, "sizeLocked")):

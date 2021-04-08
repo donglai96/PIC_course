@@ -1,3 +1,4 @@
+from __future__ import print_function
 from types import *
 import numpy as np
 import wx
@@ -6,7 +7,10 @@ import sys
 import time
 from threading import Thread
 from multiprocessing import Process, Pipe, Queue, Lock, Value, Manager
-import cPickle
+if (sys.version_info.major==3):
+   import _pickle as cPickle
+else:
+   import cPickle
 from collections import namedtuple
 
 import Graphs
@@ -35,14 +39,14 @@ def changeVarsCallback(obj, to):
                     continue
             setattr(obj, key, rightType(to.var[key]))
     except AttributeError:
-        print "Could not change variables"
+        print ("Could not change variables")
 
 
 # The function to be called when reset is pushed
 def resetCallback(obj, to):
-    print "The reset button was pushed!"
+    print ("The reset button was pushed!")
     # Do something
-    print obj.tend
+    print (obj.tend)
 
 #Called in the sim thread on exit.
 def exitCallback(obj, to):
@@ -50,14 +54,14 @@ def exitCallback(obj, to):
 
 
 #This is a simple function that takes a number and gives a fortran
-#consisten type
+#consistent type
 def rightType(val):
     ints, reals, complexs = int_type, float_type, complex_type
-    if type(val) is IntType:
+    if type(val) == int:
         return np.array([val], ints)
-    elif type(val) is FloatType:
+    elif type(val) == float:
         return np.array([val], reals)
-    elif type(val) is ComplexType:
+    elif type(val) == complex:
         return np.array([val], complexs)
 
 
@@ -78,10 +82,10 @@ def initGui(q, que, events, outqueue):
         app.MainLoop()
         return app
     else:
-        print "Cannot create multiple wxApp contexts"
+        print ("Cannot create multiple wxApp contexts")
         return False
 
-Connection = namedtuple("Connection", "gui_conn, que, events, async")
+Connection = namedtuple("Connection", "gui_conn, que, events, bsync")
 
 ##PlasmaContext is the interface the sim process uses to talk to the GUI.
 class PlasmaContext():
@@ -118,7 +122,7 @@ class PlasmaContext():
     def runMain(func):
         """
         This function launches the main simulation function in a child process.
-        This is necessary, becase on OS X for whatever reason the GUI fails to
+        This is necessary, because on OS X for whatever reason the GUI fails to
         respond if launched in the child process.
 
         :param func: The name of a function, which should take a single parameter.
@@ -129,17 +133,17 @@ class PlasmaContext():
 
         """
         manager = Manager()
-        # async is a multiprocess dictionary used to keep track of which plots are being
+        # bsync is a multiprocess dictionary used to keep track of which plots are being
         # displayed, this way the simulation process does not need to generate graphs for
         # invisible plots
-        async = manager.dict()  # sync or async mode
+        bsync = manager.dict()  # sync or async mode
         # que is the primary means of sending plot data to the GUI thread, typically using
         # _sendplot
         que = Queue()
         # events queue is used to signal events from the GUI to the sim process.  It is
         # Not bidirectional.  The events are generated in getEvents.
         events = Queue()
-        # gui_conn queue is used to recieve messages from the gui.  Currently it is only
+        # gui_conn queue is used to receive messages from the gui.  Currently it is only
         # used to keep the simulation in sync with the GUI.  After a plot is sent using
         # _sendplot to the gui, _sendplot will pause the simulation process and wait for
         # any response on gui_conn before proceeding.  This is perhaps a heavy handed way to
@@ -147,13 +151,13 @@ class PlasmaContext():
         gui_conn = Queue()
         # Wrap the connection elements in to a namedtuple to send to the new process
         # A named tuple is used for code clarity
-        conn = Connection(gui_conn, que, events, async)
+        conn = Connection(gui_conn, que, events, bsync)
         # run the simulation code in child process
         p = Process(target=func, args=conn)
         #p.daemon = True
         p.start()
         #run gui in parent process
-        initGui(gui_conn, que, events, async)
+        initGui(gui_conn, que, events, bsync)
 
     def _sendEarly(self, obj):
         """
@@ -185,6 +189,7 @@ class PlasmaContext():
            :param obj: The object to send.
 
         """
+        print("_sendplot:",type(obj),str(obj),self.norun)
         if self.norun:
             return
         if self.graphEnabled or self._sendEarly(obj):  #self.graphEarly is set when fastforward is called
@@ -194,7 +199,9 @@ class PlasmaContext():
                 True
             iv = cPickle.dumps(obj)
             self.conn.que.put(iv)
-            self.conn.gui_conn.get() # Wait for response.  This will block until response recieved
+            print("_sendplot:put(iv)",type(iv),type(self.conn.gui_conn))
+            self.conn.gui_conn.get() # Wait for response.  This will block until response received
+            print("_sendplot:got")
 
     def _sendmessageasync(self, obj):
         """
@@ -287,7 +294,11 @@ class PlasmaContext():
 
         # Run callbacks.  A signal sent from the GUI must have a signame attribute
         for q in que:
-            if self.callbacks.has_key(q.signame):
+            if (sys.version_info.major==3):
+                tval = q.signame in self.callbacks
+            else:
+                tval = self.callbacks.has_key(q.signame)
+            if tval:
                 if q.signame == "EXIT":
                     self._sendplot("EXIT")
                     self.showGraphs(False)
@@ -316,7 +327,7 @@ class PlasmaContext():
             return
         if name != None:
             try:
-                if self.conn.async[name] == 0:
+                if self.conn.bsync[name] == 0:
                     return False
             except:  # Key does not exist.  Not drawing
                 return False
@@ -399,6 +410,21 @@ class PlasmaContext():
         if early is not None:
             self.graphBeforeEndOfFF(pt, early)
         dv1 = Graphs.DrawVelocity(data, labels, fvm=fvm, title=title)
+        if plottype is not None:
+            dv1.plottype = plottype
+        self._sendplot(dv1)
+
+    def showEnergyDist(self, data, labels, wk=None, plottype=None, title=None, early=None):
+        if self.norun:
+            return
+        pt = plottype
+        if pt == None:
+            pt = "DRAWENERGYDIST"
+        if not self.isGraphing(pt):
+            return
+        if early is not None:
+            self.graphBeforeEndOfFF(pt, early)
+        dv1 = Graphs.DrawEnergyDist(data, labels, wk=wk, title=title)
         if plottype is not None:
             dv1.plottype = plottype
         self._sendplot(dv1)
@@ -526,6 +552,7 @@ class PlasmaContext():
             return
         if early is not None:
             self.graphBeforeEndOfFF(name, early)
+        print("SI:name,text,early=",name,text,early)
         dv1 = Graphs.DrawSimpleImage(name, data, text, extent=extent, labl=labl, title=title, ticks_scale=ticks_scale, norm=norm)
         self._sendplot(dv1)
 
@@ -545,7 +572,7 @@ class PlasmaContext():
 
     def clearGraphList(self):
         """ Clears the default items in the right-click menu.  This
-        is eventually going to be depracated
+        is eventually going to be deprecated
 
         """
         if self.norun:

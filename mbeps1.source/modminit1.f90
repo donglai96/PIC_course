@@ -5,6 +5,7 @@
 ! Fortran90 wrappers to 1d OpenMP PIC library libminit1.f
 ! mnextran1 skips over nextrand groups of random numbers in order to
 !           initialize different random ensembles
+!           calls NEXTRAN1
 ! mudistr1 calculates initial particle co-ordinates with uniform density
 !          for 1d or 1-2/2d code
 !          calls UDISTR1
