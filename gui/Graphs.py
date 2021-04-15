@@ -1047,6 +1047,20 @@ class DrawPhi(KeyList):
         # pkw, wax = ftPhikw(self.phikw_time, self.phikw, 0.2, 2.0, 10)
         mim = axes.imshow(fres, cmap=cm.rainbow_r, interpolation='none', aspect='auto',
                           extent=(0, k, 0, self.POmegaMax), norm=LogNorm(), origin='lower')
+        
+
+
+        
+
+        # Test for adding dispersion
+        # mim = axes.imshow(fres, cmap=cm.plasma, interpolation='none', aspect='auto',
+        #                   extent=(0, k, 0, self.POmegaMax), norm=LogNorm(), origin='lower')
+        # k_plot = np.arange(0,k,0.01)
+        # dis = axes.plot(k_plot,np.sqrt(1+3 * k_plot**2 * 4**2))
+
+
+
+
         fig.colorbar(mim)
         axes.set_xlabel(r"$k$")
         axes.set_ylabel(r"$\omega$")
@@ -1097,6 +1111,26 @@ class DrawSimpleImage(KeyList):
             mim = axes.imshow(np.transpose(self.img), cmap=cm.rainbow, interpolation='none', aspect='auto',
                               origin='lower', extent=self.extent)
             fig.colorbar(mim)
+
+
+        # test for dispersion
+
+        
+        kplot = np.arange(0,self.img.shape[0],0.01)  # 41 in the input
+        indx = 9
+        nx = 2**indx
+        k_real = kplot*2*np.pi/nx
+        # k = 2pi M/(nx * delta-x)
+        vtx = 1 
+        # vth = vtx * delta-x * wpe
+        #ci = 0.1    delta-x *wpe/c = 0.1
+        ww_ww_pe = np.sqrt(1 + 3*k_real**2 * vtx**2)
+        plasma_dis  = axes.plot(kplot,ww_ww_pe,color ='black')
+
+
+        # end test for dispersion
+
+
 
         axes.set_xlabel(self.labl[0])
         axes.set_ylabel(self.labl[1])
