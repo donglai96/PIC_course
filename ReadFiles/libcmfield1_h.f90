@@ -62,15 +62,6 @@
       end interface
 !
       interface
-         subroutine WFFT2RINIT(mixup,sct,indx,indy,nxhyd,nxyhd)
-         implicit none
-         integer, intent(in) :: indx, indy, nxhyd, nxyhd
-         integer, dimension(nxhyd), intent(inout) :: mixup
-         complex, dimension(nxyhd), intent(inout) :: sct
-         end subroutine
-      end interface
-!
-      interface
          subroutine WFFT1RINIT(mixup,sct,indx,nxhd)
          implicit none
          integer, intent(in) :: indx, nxhd
@@ -111,7 +102,26 @@
          complex, dimension(nxhd), intent(in) :: sct
          end subroutine
       end interface
-! 
+!
+      interface
+         subroutine WFFT1CINIT(mixup,sct,indx,nxd,nxhd)
+         implicit none
+         integer, intent(in) :: indx, nxd, nxhd
+         integer, dimension(nxd), intent(inout) :: mixup
+         complex, dimension(nxhd), intent(inout) :: sct
+         end subroutine
+      end interface
+!
+      interface
+         subroutine FFT1C(f,isign,mixup,sct,indx,nxd,nxhd)
+         implicit none
+         integer, intent(in) :: isign, indx, nxd, nxhd
+         complex, dimension(nxd), intent(inout) :: f
+         integer, dimension(nxd), intent(in) :: mixup
+         complex, dimension(nxhd), intent(in) :: sct
+         end subroutine
+      end interface
+!
       interface
          subroutine DIVF1(f,df,nx,ndim,nxvh)
          implicit none

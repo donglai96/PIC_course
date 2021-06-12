@@ -11,7 +11,8 @@
          integer, intent(in) :: isc, ist, nx, ny, nxv, ntc
          integer, intent(inout) :: irc
          character(len=*), intent(in) :: label, chr
-         real, dimension(nxv,ny), intent(in) :: f
+!        real, dimension(nxv,ny), intent(in) :: f
+         real, intent(in) :: f
          end subroutine
       end interface
 !
@@ -23,7 +24,8 @@
          integer, intent(inout) :: irc
          real, intent(in) :: xmin, xmax, ymin, ymax
          character(len=*), intent(in) :: label, chr
-         real, dimension(nxv,ny), intent(in) :: f
+!        real, dimension(nxv,ny), intent(in) :: f
+         real, intent(in) :: f
          end subroutine
       end interface
 !
@@ -33,7 +35,8 @@
          integer, intent(in):: isc, ist, nx, ny, nxv, nc
          integer, intent(inout) :: irc
          character(len=*), intent(in) :: label, chr
-         real, dimension(nxv,ny), intent(in) :: f
+!        real, dimension(nxv,ny), intent(in) :: f
+         real, intent(in) :: f
          integer, dimension(nxv,ny), intent(inout) :: lf
          end subroutine
       end interface

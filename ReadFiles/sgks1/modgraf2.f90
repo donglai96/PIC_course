@@ -19,7 +19,7 @@
 !           calls CARPETL
 ! written by viktor k. decyk, ucla
 ! copyright 2000, regents of the university of california
-! update: november 6, 2017
+! update: may 3, 2021
 !
       use libgraf1_h
       use libgraf2_h
@@ -100,11 +100,11 @@
       write (lbl,91) itime
 ! color map plot for all values
       if (idt /= 2) then
-         call CARPET(f,label,isc,ist,lx,ly,nxv,lbl,ntc,irc)
+         call CARPET(f(1,1),label,isc,ist,lx,ly,nxv,lbl,ntc,irc)
       endif
 ! contour map for all values
       if (idt /= 1) then
-         call CONTUR(f,lf,label,isc,ist,lx,ly,nxv,lbl,nc,irc)
+         call CONTUR(f(1,1),lf,label,isc,ist,lx,ly,nxv,lbl,nc,irc)
       endif
       end subroutine
 !
@@ -149,8 +149,8 @@
       if ((ly+1) <= size(f,2)) ly = ly + 1
       write (lbl,91) itime
 ! color map plot for all values
-      call CARPETL(f,label,xmin,xmax,ymin,ymax,isc,ist,lx,ly,nxv,lbl,ntc&
-     &,irc)
+      call CARPETL(f(1,1),label,xmin,xmax,ymin,ymax,isc,ist,lx,ly,nxv,  &
+     &lbl,ntc,irc)
       end subroutine
 !
 !-----------------------------------------------------------------------

@@ -139,6 +139,8 @@ all : diag1 freaders
 
 freaders : pcreadf1 pvcreadf1 pflreadf1 pfvreadf1 ptreadf1 psreadf1
 
+spectrum : spectrum1 vspectrum1
+
 diag1 : diag1.o modpreadf1.o libcmfield1.o $(GOBJS)
 	$(FC90) $(OPTS90) $(LOPTS) -o diag1 \
     diag1.o input1mod.o cmfield1.o libcmfield1_h.o modpreadf1.o \
@@ -173,6 +175,14 @@ psreadf1 : psreadf1.o libcmfield1.o $(GOBJS)
 	$(FC90) $(OPTS90) $(LOPTS) -o psreadf1 \
     psreadf1.o input1mod.o cmfield1.o libcmfield1_h.o modpreadf1.o \
     libcmfield1.o $(GOBJS) $(LGOPTS)
+
+spectrum1 : spectrum1.o libcmfield1.o libanls1.o nlibpars.o $(GOBJS)
+	$(FC90) $(OPTS90) $(LGOPTS) -o spectrum1 spectrum1.o input1mod.o \
+	cmfield1.o libcmfield1_h.o libcmfield1.o libanls1.o nlibpars.o $(GOBJS)
+
+vspectrum1 : vspectrum1.o libcmfield1.o libanls1.o nlibpars.o $(GOBJS)
+	$(FC90) $(OPTS90) $(LGOPTS) -o vspectrum1 vspectrum1.o input1mod.o \
+	cmfield1.o libcmfield1_h.o libcmfield1.o libanls1.o nlibpars.o $(GOBJS)
 
 # Python
 
@@ -220,9 +230,21 @@ psreadf1.o : psreadf1.f90 input1mod.o cmfield1.o modgraf1.o modgraf2.o
 libcmfield1.o : libcmfield1.f
 	$(FC90) $(OPTS90) -o libcmfield1.o -c libcmfield1.f
 
+libanls1.o : libanls1.f
+	$(FC90) $(OPTS90) -c libanls1.f
+
+nlibpars.o : nlibpars.f
+	$(FC90) $(OPTS90) -c nlibpars.f
+
+spectrum1.o : spectrum1.f90 input1mod.o cmfield1.o modgraf1.o modgraf2.o
+	$(FC90) $(OPTS90) -Wall $(LEGACY) -c spectrum1.f90
+
+vspectrum1.o : vspectrum1.f90 input1mod.o cmfield1.o modgraf1.o modgraf2.o
+	$(FC90) $(OPTS90) $(LEGACY) -c vspectrum1.f90
+
 list:
-	echo diag1 pcreadf1 pvcreadf1 pflreadf1 pfvreadf1 ptreadf1 psreadf1 python \
-	     clean clobber
+	echo diag1 pcreadf1 pvcreadf1 pflreadf1 pfvreadf1 ptreadf1 psreadf1 \
+	spectrum1 vspectrum1 python clean clobber
 
 # Python
 
@@ -336,12 +358,18 @@ cptreadf1 : ptreadf1
 cpsreadf1 : psreadf1
 	cp psreadf1 ../
 
+cspectrum1 : spectrum1
+	cp spectrum1 ../
+
+cvspectrum1 : vspectrum1
+	cp vspectrum1 ../
+
 clean :
 	rm -f *.o *.mod *.pyf sgks1/Ygl-4.2/*.o
 
 clobber: clean
 	rm -f diag1 pcreadf1 pvcreadf1 pflreadf1 pfvreadf1 ptreadf1 psreadf1 \
-	      *.so sgks1/Ygl-4.2/*.a
+	      spectrum1 vspectrum1 *.so sgks1/Ygl-4.2/*.a
 
 #Python
 cpyexecs : cpycreadf1 cpyvcreadf1 cpyflreadf1 cpyfvreadf1 cpytreadf1 \

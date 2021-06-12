@@ -1,0 +1,799 @@
+program mbeps1
+ntime =  0
+Field, Kinetic and Total Energies:
+ 3.8013077e-06  3.2507838e+05  3.2507838e+05
+ntime =  1
+Field, Kinetic and Total Energies:
+ 2.4668620e+00  3.2507600e+05  3.2507847e+05
+ntime =  2
+Field, Kinetic and Total Energies:
+ 9.2983007e+00  3.2506928e+05  3.2507859e+05
+ntime =  3
+Field, Kinetic and Total Energies:
+ 1.9138308e+01  3.2505947e+05  3.2507859e+05
+ntime =  4
+Field, Kinetic and Total Energies:
+ 3.0911110e+01  3.2504812e+05  3.2507903e+05
+ntime =  5
+Field, Kinetic and Total Energies:
+ 4.2120789e+01  3.2503709e+05  3.2507922e+05
+ntime =  6
+Field, Kinetic and Total Energies:
+ 5.1223232e+01  3.2502781e+05  3.2507903e+05
+ntime =  7
+Field, Kinetic and Total Energies:
+ 5.8056721e+01  3.2502100e+05  3.2507906e+05
+ntime =  8
+Field, Kinetic and Total Energies:
+ 6.1932312e+01  3.2501712e+05  3.2507906e+05
+ntime =  9
+Field, Kinetic and Total Energies:
+ 6.2976368e+01  3.2501594e+05  3.2507891e+05
+ntime =  10
+Field, Kinetic and Total Energies:
+ 6.1742203e+01  3.2501691e+05  3.2507866e+05
+ntime =  11
+Field, Kinetic and Total Energies:
+ 5.9718620e+01  3.2501884e+05  3.2507856e+05
+ntime =  12
+Field, Kinetic and Total Energies:
+ 5.8714252e+01  3.2501978e+05  3.2507850e+05
+ntime =  13
+Field, Kinetic and Total Energies:
+ 5.9751095e+01  3.2501872e+05  3.2507847e+05
+ntime =  14
+Field, Kinetic and Total Energies:
+ 6.2874039e+01  3.2501572e+05  3.2507859e+05
+ntime =  15
+Field, Kinetic and Total Energies:
+ 6.7080948e+01  3.2501162e+05  3.2507872e+05
+ntime =  16
+Field, Kinetic and Total Energies:
+ 7.0349182e+01  3.2500800e+05  3.2507834e+05
+ntime =  17
+Field, Kinetic and Total Energies:
+ 7.2497795e+01  3.2500616e+05  3.2507866e+05
+ntime =  18
+Field, Kinetic and Total Energies:
+ 7.2851440e+01  3.2500594e+05  3.2507878e+05
+ntime =  19
+Field, Kinetic and Total Energies:
+ 7.2726944e+01  3.2500625e+05  3.2507897e+05
+ntime =  20
+Field, Kinetic and Total Energies:
+ 7.2021431e+01  3.2500666e+05  3.2507869e+05
+ntime =  21
+Field, Kinetic and Total Energies:
+ 7.1560646e+01  3.2500725e+05  3.2507881e+05
+ntime =  22
+Field, Kinetic and Total Energies:
+ 7.1429527e+01  3.2500756e+05  3.2507900e+05
+ntime =  23
+Field, Kinetic and Total Energies:
+ 7.1796143e+01  3.2500738e+05  3.2507916e+05
+ntime =  24
+Field, Kinetic and Total Energies:
+ 7.1936768e+01  3.2500675e+05  3.2507869e+05
+ntime =  25
+Field, Kinetic and Total Energies:
+ 7.3210999e+01  3.2500503e+05  3.2507825e+05
+ntime =  26
+Field, Kinetic and Total Energies:
+ 7.6763870e+01  3.2500172e+05  3.2507847e+05
+ntime =  27
+Field, Kinetic and Total Energies:
+ 8.1753105e+01  3.2499697e+05  3.2507872e+05
+ntime =  28
+Field, Kinetic and Total Energies:
+ 8.7165283e+01  3.2499156e+05  3.2507872e+05
+ntime =  29
+Field, Kinetic and Total Energies:
+ 9.2657700e+01  3.2498672e+05  3.2507938e+05
+ntime =  30
+Field, Kinetic and Total Energies:
+ 9.5819977e+01  3.2498347e+05  3.2507928e+05
+ntime =  31
+Field, Kinetic and Total Energies:
+ 9.7536102e+01  3.2498175e+05  3.2507928e+05
+ntime =  32
+Field, Kinetic and Total Energies:
+ 9.7854340e+01  3.2498100e+05  3.2507884e+05
+ntime =  33
+Field, Kinetic and Total Energies:
+ 9.8215172e+01  3.2498056e+05  3.2507878e+05
+ntime =  34
+Field, Kinetic and Total Energies:
+ 9.8670547e+01  3.2498031e+05  3.2507897e+05
+ntime =  35
+Field, Kinetic and Total Energies:
+ 9.8418465e+01  3.2498062e+05  3.2507903e+05
+ntime =  36
+Field, Kinetic and Total Energies:
+ 9.7738335e+01  3.2498144e+05  3.2507919e+05
+ntime =  37
+Field, Kinetic and Total Energies:
+ 9.6920967e+01  3.2498231e+05  3.2507922e+05
+ntime =  38
+Field, Kinetic and Total Energies:
+ 9.6682808e+01  3.2498241e+05  3.2507909e+05
+ntime =  39
+Field, Kinetic and Total Energies:
+ 9.7959648e+01  3.2498125e+05  3.2507922e+05
+ntime =  40
+Field, Kinetic and Total Energies:
+ 9.9589569e+01  3.2497978e+05  3.2507938e+05
+ntime =  41
+Field, Kinetic and Total Energies:
+ 1.0050015e+02  3.2497897e+05  3.2507947e+05
+ntime =  42
+Field, Kinetic and Total Energies:
+ 1.0162580e+02  3.2497750e+05  3.2507912e+05
+ntime =  43
+Field, Kinetic and Total Energies:
+ 1.0586370e+02  3.2497328e+05  3.2507916e+05
+ntime =  44
+Field, Kinetic and Total Energies:
+ 1.1298500e+02  3.2496594e+05  3.2507894e+05
+ntime =  45
+Field, Kinetic and Total Energies:
+ 1.2204522e+02  3.2495700e+05  3.2507903e+05
+ntime =  46
+Field, Kinetic and Total Energies:
+ 1.3050888e+02  3.2494853e+05  3.2507903e+05
+ntime =  47
+Field, Kinetic and Total Energies:
+ 1.3646820e+02  3.2494234e+05  3.2507881e+05
+ntime =  48
+Field, Kinetic and Total Energies:
+ 1.3995377e+02  3.2493894e+05  3.2507891e+05
+ntime =  49
+Field, Kinetic and Total Energies:
+ 1.4110318e+02  3.2493781e+05  3.2507891e+05
+ntime =  50
+Field, Kinetic and Total Energies:
+ 1.4038344e+02  3.2493838e+05  3.2507875e+05
+ntime =  51
+Field, Kinetic and Total Energies:
+ 1.3948787e+02  3.2493959e+05  3.2507909e+05
+ntime =  52
+Field, Kinetic and Total Energies:
+ 1.3870871e+02  3.2494038e+05  3.2507909e+05
+ntime =  53
+Field, Kinetic and Total Energies:
+ 1.3836613e+02  3.2494075e+05  3.2507912e+05
+ntime =  54
+Field, Kinetic and Total Energies:
+ 1.3836058e+02  3.2494075e+05  3.2507912e+05
+ntime =  55
+Field, Kinetic and Total Energies:
+ 1.3950441e+02  3.2493912e+05  3.2507862e+05
+ntime =  56
+Field, Kinetic and Total Energies:
+ 1.4426260e+02  3.2493416e+05  3.2507841e+05
+ntime =  57
+Field, Kinetic and Total Energies:
+ 1.5229019e+02  3.2492612e+05  3.2507841e+05
+ntime =  58
+Field, Kinetic and Total Energies:
+ 1.6160153e+02  3.2491688e+05  3.2507847e+05
+ntime =  59
+Field, Kinetic and Total Energies:
+ 1.7128802e+02  3.2490691e+05  3.2507819e+05
+ntime =  60
+Field, Kinetic and Total Energies:
+ 1.8257533e+02  3.2489581e+05  3.2507838e+05
+ntime =  61
+Field, Kinetic and Total Energies:
+ 1.9396945e+02  3.2488409e+05  3.2507806e+05
+ntime =  62
+Field, Kinetic and Total Energies:
+ 2.0517752e+02  3.2487291e+05  3.2507809e+05
+ntime =  63
+Field, Kinetic and Total Energies:
+ 2.1544179e+02  3.2486250e+05  3.2507794e+05
+ntime =  64
+Field, Kinetic and Total Energies:
+ 2.2604001e+02  3.2485191e+05  3.2507794e+05
+ntime =  65
+Field, Kinetic and Total Energies:
+ 2.3785905e+02  3.2483994e+05  3.2507778e+05
+ntime =  66
+Field, Kinetic and Total Energies:
+ 2.5106656e+02  3.2482641e+05  3.2507747e+05
+ntime =  67
+Field, Kinetic and Total Energies:
+ 2.6606537e+02  3.2481184e+05  3.2507791e+05
+ntime =  68
+Field, Kinetic and Total Energies:
+ 2.8147098e+02  3.2479688e+05  3.2507834e+05
+ntime =  69
+Field, Kinetic and Total Energies:
+ 2.9650406e+02  3.2478178e+05  3.2507828e+05
+ntime =  70
+Field, Kinetic and Total Energies:
+ 3.1198178e+02  3.2476625e+05  3.2507822e+05
+ntime =  71
+Field, Kinetic and Total Energies:
+ 3.2895090e+02  3.2474869e+05  3.2507762e+05
+ntime =  72
+Field, Kinetic and Total Energies:
+ 3.5012363e+02  3.2472738e+05  3.2507750e+05
+ntime =  73
+Field, Kinetic and Total Energies:
+ 3.7566898e+02  3.2470228e+05  3.2507794e+05
+ntime =  74
+Field, Kinetic and Total Energies:
+ 4.0334204e+02  3.2467441e+05  3.2507775e+05
+ntime =  75
+Field, Kinetic and Total Energies:
+ 4.3303897e+02  3.2464462e+05  3.2507766e+05
+ntime =  76
+Field, Kinetic and Total Energies:
+ 4.6383981e+02  3.2461381e+05  3.2507766e+05
+ntime =  77
+Field, Kinetic and Total Energies:
+ 4.9492880e+02  3.2458197e+05  3.2507691e+05
+ntime =  78
+Field, Kinetic and Total Energies:
+ 5.2880988e+02  3.2454794e+05  3.2507675e+05
+ntime =  79
+Field, Kinetic and Total Energies:
+ 5.6655927e+02  3.2451003e+05  3.2507659e+05
+ntime =  80
+Field, Kinetic and Total Energies:
+ 6.0884778e+02  3.2446697e+05  3.2507581e+05
+ntime =  81
+Field, Kinetic and Total Energies:
+ 6.5790430e+02  3.2441853e+05  3.2507644e+05
+ntime =  82
+Field, Kinetic and Total Energies:
+ 7.1131793e+02  3.2436522e+05  3.2507653e+05
+ntime =  83
+Field, Kinetic and Total Energies:
+ 7.6989685e+02  3.2430644e+05  3.2507634e+05
+ntime =  84
+Field, Kinetic and Total Energies:
+ 8.3424048e+02  3.2424162e+05  3.2507588e+05
+ntime =  85
+Field, Kinetic and Total Energies:
+ 9.0420599e+02  3.2417197e+05  3.2507619e+05
+ntime =  86
+Field, Kinetic and Total Energies:
+ 9.7660535e+02  3.2409919e+05  3.2507578e+05
+ntime =  87
+Field, Kinetic and Total Energies:
+ 1.0517649e+03  3.2402434e+05  3.2507609e+05
+ntime =  88
+Field, Kinetic and Total Energies:
+ 1.1271849e+03  3.2394897e+05  3.2507616e+05
+ntime =  89
+Field, Kinetic and Total Energies:
+ 1.1997281e+03  3.2387556e+05  3.2507528e+05
+ntime =  90
+Field, Kinetic and Total Energies:
+ 1.2693629e+03  3.2380600e+05  3.2507538e+05
+ntime =  91
+Field, Kinetic and Total Energies:
+ 1.3350453e+03  3.2374038e+05  3.2507541e+05
+ntime =  92
+Field, Kinetic and Total Energies:
+ 1.3984851e+03  3.2367706e+05  3.2507556e+05
+ntime =  93
+Field, Kinetic and Total Energies:
+ 1.4614738e+03  3.2361294e+05  3.2507441e+05
+ntime =  94
+Field, Kinetic and Total Energies:
+ 1.5300068e+03  3.2354322e+05  3.2507322e+05
+ntime =  95
+Field, Kinetic and Total Energies:
+ 1.6080662e+03  3.2346466e+05  3.2507272e+05
+ntime =  96
+Field, Kinetic and Total Energies:
+ 1.6956510e+03  3.2337694e+05  3.2507259e+05
+ntime =  97
+Field, Kinetic and Total Energies:
+ 1.7926118e+03  3.2328028e+05  3.2507291e+05
+ntime =  98
+Field, Kinetic and Total Energies:
+ 1.8997230e+03  3.2317384e+05  3.2507356e+05
+ntime =  99
+Field, Kinetic and Total Energies:
+ 2.0170533e+03  3.2305575e+05  3.2507281e+05
+ntime =  100
+Field, Kinetic and Total Energies:
+ 2.1466765e+03  3.2292494e+05  3.2507162e+05
+ntime =  101
+Field, Kinetic and Total Energies:
+ 2.2881331e+03  3.2278222e+05  3.2507034e+05
+ntime =  102
+Field, Kinetic and Total Energies:
+ 2.4397146e+03  3.2263075e+05  3.2507047e+05
+ntime =  103
+Field, Kinetic and Total Energies:
+ 2.5954634e+03  3.2247556e+05  3.2507103e+05
+ntime =  104
+Field, Kinetic and Total Energies:
+ 2.7480403e+03  3.2232178e+05  3.2506981e+05
+ntime =  105
+Field, Kinetic and Total Energies:
+ 2.8966938e+03  3.2217359e+05  3.2507028e+05
+ntime =  106
+Field, Kinetic and Total Energies:
+ 3.0358711e+03  3.2203381e+05  3.2506969e+05
+ntime =  107
+Field, Kinetic and Total Energies:
+ 3.1653713e+03  3.2190325e+05  3.2506862e+05
+ntime =  108
+Field, Kinetic and Total Energies:
+ 3.2878792e+03  3.2178009e+05  3.2506797e+05
+ntime =  109
+Field, Kinetic and Total Energies:
+ 3.4071357e+03  3.2165941e+05  3.2506653e+05
+ntime =  110
+Field, Kinetic and Total Energies:
+ 3.5325991e+03  3.2153253e+05  3.2506512e+05
+ntime =  111
+Field, Kinetic and Total Energies:
+ 3.6755134e+03  3.2138831e+05  3.2506381e+05
+ntime =  112
+Field, Kinetic and Total Energies:
+ 3.8446638e+03  3.2121897e+05  3.2506362e+05
+ntime =  113
+Field, Kinetic and Total Energies:
+ 4.0401130e+03  3.2102294e+05  3.2506306e+05
+ntime =  114
+Field, Kinetic and Total Energies:
+ 4.2611660e+03  3.2080212e+05  3.2506328e+05
+ntime =  115
+Field, Kinetic and Total Energies:
+ 4.5047295e+03  3.2055984e+05  3.2506456e+05
+ntime =  116
+Field, Kinetic and Total Energies:
+ 4.7645889e+03  3.2030175e+05  3.2506634e+05
+ntime =  117
+Field, Kinetic and Total Energies:
+ 5.0284092e+03  3.2003622e+05  3.2506462e+05
+ntime =  118
+Field, Kinetic and Total Energies:
+ 5.2919194e+03  3.1977172e+05  3.2506362e+05
+ntime =  119
+Field, Kinetic and Total Energies:
+ 5.5504819e+03  3.1951325e+05  3.2506372e+05
+ntime =  120
+Field, Kinetic and Total Energies:
+ 5.8000298e+03  3.1926156e+05  3.2506159e+05
+ntime =  121
+Field, Kinetic and Total Energies:
+ 6.0467305e+03  3.1901512e+05  3.2506184e+05
+ntime =  122
+Field, Kinetic and Total Energies:
+ 6.2911270e+03  3.1877234e+05  3.2506347e+05
+ntime =  123
+Field, Kinetic and Total Energies:
+ 6.5274272e+03  3.1853091e+05  3.2505834e+05
+ntime =  124
+Field, Kinetic and Total Energies:
+ 6.7717476e+03  3.1828691e+05  3.2505866e+05
+ntime =  125
+Field, Kinetic and Total Energies:
+ 7.0219814e+03  3.1803722e+05  3.2505919e+05
+ntime =  126
+Field, Kinetic and Total Energies:
+ 7.2765864e+03  3.1778050e+05  3.2505709e+05
+ntime =  127
+Field, Kinetic and Total Energies:
+ 7.5374150e+03  3.1751775e+05  3.2505516e+05
+ntime =  128
+Field, Kinetic and Total Energies:
+ 7.8038530e+03  3.1725119e+05  3.2505503e+05
+ntime =  129
+Field, Kinetic and Total Energies:
+ 8.0733037e+03  3.1698322e+05  3.2505653e+05
+ntime =  130
+Field, Kinetic and Total Energies:
+ 8.3393496e+03  3.1671669e+05  3.2505603e+05
+ntime =  131
+Field, Kinetic and Total Energies:
+ 8.6011172e+03  3.1645247e+05  3.2505359e+05
+ntime =  132
+Field, Kinetic and Total Energies:
+ 8.8638418e+03  3.1618997e+05  3.2505381e+05
+ntime =  133
+Field, Kinetic and Total Energies:
+ 9.1231074e+03  3.1592978e+05  3.2505288e+05
+ntime =  134
+Field, Kinetic and Total Energies:
+ 9.3796611e+03  3.1567300e+05  3.2505266e+05
+ntime =  135
+Field, Kinetic and Total Energies:
+ 9.6302812e+03  3.1542044e+05  3.2505072e+05
+ntime =  136
+Field, Kinetic and Total Energies:
+ 9.8767002e+03  3.1517272e+05  3.2504941e+05
+ntime =  137
+Field, Kinetic and Total Energies:
+ 1.0119736e+04  3.1493191e+05  3.2505166e+05
+ntime =  138
+Field, Kinetic and Total Energies:
+ 1.0348252e+04  3.1470147e+05  3.2504972e+05
+ntime =  139
+Field, Kinetic and Total Energies:
+ 1.0564256e+04  3.1448366e+05  3.2504791e+05
+ntime =  140
+Field, Kinetic and Total Energies:
+ 1.0767655e+04  3.1428066e+05  3.2504831e+05
+ntime =  141
+Field, Kinetic and Total Energies:
+ 1.0953850e+04  3.1409469e+05  3.2504853e+05
+ntime =  142
+Field, Kinetic and Total Energies:
+ 1.1121088e+04  3.1392722e+05  3.2504831e+05
+ntime =  143
+Field, Kinetic and Total Energies:
+ 1.1268866e+04  3.1378019e+05  3.2504906e+05
+ntime =  144
+Field, Kinetic and Total Energies:
+ 1.1394575e+04  3.1365528e+05  3.2504984e+05
+ntime =  145
+Field, Kinetic and Total Energies:
+ 1.1498479e+04  3.1355078e+05  3.2504925e+05
+ntime =  146
+Field, Kinetic and Total Energies:
+ 1.1590634e+04  3.1346038e+05  3.2505100e+05
+ntime =  147
+Field, Kinetic and Total Energies:
+ 1.1674845e+04  3.1337431e+05  3.2504916e+05
+ntime =  148
+Field, Kinetic and Total Energies:
+ 1.1765124e+04  3.1328412e+05  3.2504925e+05
+ntime =  149
+Field, Kinetic and Total Energies:
+ 1.1859831e+04  3.1318494e+05  3.2504478e+05
+ntime =  150
+Field, Kinetic and Total Energies:
+ 1.1973765e+04  3.1307428e+05  3.2504803e+05
+ntime =  151
+Field, Kinetic and Total Energies:
+ 1.2095366e+04  3.1295281e+05  3.2504819e+05
+ntime =  152
+Field, Kinetic and Total Energies:
+ 1.2220962e+04  3.1282469e+05  3.2504566e+05
+ntime =  153
+Field, Kinetic and Total Energies:
+ 1.2348872e+04  3.1269891e+05  3.2504778e+05
+ntime =  154
+Field, Kinetic and Total Energies:
+ 1.2460738e+04  3.1258850e+05  3.2504925e+05
+ntime =  155
+Field, Kinetic and Total Energies:
+ 1.2542693e+04  3.1250600e+05  3.2504869e+05
+ntime =  156
+Field, Kinetic and Total Energies:
+ 1.2587743e+04  3.1245909e+05  3.2504684e+05
+ntime =  157
+Field, Kinetic and Total Energies:
+ 1.2599487e+04  3.1244856e+05  3.2504806e+05
+ntime =  158
+Field, Kinetic and Total Energies:
+ 1.2577324e+04  3.1247038e+05  3.2504769e+05
+ntime =  159
+Field, Kinetic and Total Energies:
+ 1.2529523e+04  3.1251856e+05  3.2504809e+05
+ntime =  160
+Field, Kinetic and Total Energies:
+ 1.2460913e+04  3.1258569e+05  3.2504659e+05
+ntime =  161
+Field, Kinetic and Total Energies:
+ 1.2384065e+04  3.1266331e+05  3.2504738e+05
+ntime =  162
+Field, Kinetic and Total Energies:
+ 1.2299708e+04  3.1274388e+05  3.2504359e+05
+ntime =  163
+Field, Kinetic and Total Energies:
+ 1.2224040e+04  3.1282188e+05  3.2504591e+05
+ntime =  164
+Field, Kinetic and Total Energies:
+ 1.2150326e+04  3.1289531e+05  3.2504562e+05
+ntime =  165
+Field, Kinetic and Total Energies:
+ 1.2079944e+04  3.1296600e+05  3.2504594e+05
+ntime =  166
+Field, Kinetic and Total Energies:
+ 1.2007889e+04  3.1304050e+05  3.2504838e+05
+ntime =  167
+Field, Kinetic and Total Energies:
+ 1.1920817e+04  3.1312838e+05  3.2504919e+05
+ntime =  168
+Field, Kinetic and Total Energies:
+ 1.1811209e+04  3.1323772e+05  3.2504894e+05
+ntime =  169
+Field, Kinetic and Total Energies:
+ 1.1678229e+04  3.1337278e+05  3.2505100e+05
+ntime =  170
+Field, Kinetic and Total Energies:
+ 1.1517253e+04  3.1353394e+05  3.2505119e+05
+ntime =  171
+Field, Kinetic and Total Energies:
+ 1.1332224e+04  3.1371731e+05  3.2504953e+05
+ntime =  172
+Field, Kinetic and Total Energies:
+ 1.1132213e+04  3.1391612e+05  3.2504834e+05
+ntime =  173
+Field, Kinetic and Total Energies:
+ 1.0927607e+04  3.1412284e+05  3.2505044e+05
+ntime =  174
+Field, Kinetic and Total Energies:
+ 1.0720667e+04  3.1432997e+05  3.2505062e+05
+ntime =  175
+Field, Kinetic and Total Energies:
+ 1.0517066e+04  3.1453166e+05  3.2504872e+05
+ntime =  176
+Field, Kinetic and Total Energies:
+ 1.0323166e+04  3.1472497e+05  3.2504812e+05
+ntime =  177
+Field, Kinetic and Total Energies:
+ 1.0143135e+04  3.1490991e+05  3.2505303e+05
+ntime =  178
+Field, Kinetic and Total Energies:
+ 9.9622041e+03  3.1509050e+05  3.2505272e+05
+ntime =  179
+Field, Kinetic and Total Energies:
+ 9.7794600e+03  3.1527303e+05  3.2505250e+05
+ntime =  180
+Field, Kinetic and Total Energies:
+ 9.5907646e+03  3.1546462e+05  3.2505538e+05
+ntime =  181
+Field, Kinetic and Total Energies:
+ 9.3859531e+03  3.1567094e+05  3.2505688e+05
+ntime =  182
+Field, Kinetic and Total Energies:
+ 9.1615654e+03  3.1589419e+05  3.2505575e+05
+ntime =  183
+Field, Kinetic and Total Energies:
+ 8.9227334e+03  3.1613316e+05  3.2505588e+05
+ntime =  184
+Field, Kinetic and Total Energies:
+ 8.6714043e+03  3.1638416e+05  3.2505556e+05
+ntime =  185
+Field, Kinetic and Total Energies:
+ 8.4117168e+03  3.1664350e+05  3.2505522e+05
+ntime =  186
+Field, Kinetic and Total Energies:
+ 8.1476772e+03  3.1690891e+05  3.2505659e+05
+ntime =  187
+Field, Kinetic and Total Energies:
+ 7.8815498e+03  3.1717719e+05  3.2505875e+05
+ntime =  188
+Field, Kinetic and Total Energies:
+ 7.6155269e+03  3.1744166e+05  3.2505719e+05
+ntime =  189
+Field, Kinetic and Total Energies:
+ 7.3651108e+03  3.1769169e+05  3.2505681e+05
+ntime =  190
+Field, Kinetic and Total Energies:
+ 7.1406670e+03  3.1791888e+05  3.2505953e+05
+ntime =  191
+Field, Kinetic and Total Energies:
+ 6.9375337e+03  3.1812331e+05  3.2506084e+05
+ntime =  192
+Field, Kinetic and Total Energies:
+ 6.7524849e+03  3.1830825e+05  3.2506075e+05
+ntime =  193
+Field, Kinetic and Total Energies:
+ 6.5869756e+03  3.1847516e+05  3.2506212e+05
+ntime =  194
+Field, Kinetic and Total Energies:
+ 6.4361299e+03  3.1862572e+05  3.2506184e+05
+ntime =  195
+Field, Kinetic and Total Energies:
+ 6.2994556e+03  3.1876353e+05  3.2506300e+05
+ntime =  196
+Field, Kinetic and Total Energies:
+ 6.1699165e+03  3.1889466e+05  3.2506456e+05
+ntime =  197
+Field, Kinetic and Total Energies:
+ 6.0370649e+03  3.1902841e+05  3.2506547e+05
+ntime =  198
+Field, Kinetic and Total Energies:
+ 5.8934775e+03  3.1917347e+05  3.2506694e+05
+ntime =  199
+Field, Kinetic and Total Energies:
+ 5.7335132e+03  3.1933206e+05  3.2506556e+05
+ntime =  200
+Field, Kinetic and Total Energies:
+ 5.5659263e+03  3.1949888e+05  3.2506481e+05
+ntime =  201
+Field, Kinetic and Total Energies:
+ 5.4012402e+03  3.1966303e+05  3.2506428e+05
+ntime =  202
+Field, Kinetic and Total Energies:
+ 5.2536553e+03  3.1981122e+05  3.2506488e+05
+ntime =  203
+Field, Kinetic and Total Energies:
+ 5.1328755e+03  3.1993278e+05  3.2506566e+05
+ntime =  204
+Field, Kinetic and Total Energies:
+ 5.0436602e+03  3.2002191e+05  3.2506556e+05
+ntime =  205
+Field, Kinetic and Total Energies:
+ 4.9868359e+03  3.2007862e+05  3.2506547e+05
+ntime =  206
+Field, Kinetic and Total Energies:
+ 4.9582456e+03  3.2010741e+05  3.2506566e+05
+ntime =  207
+Field, Kinetic and Total Energies:
+ 4.9522681e+03  3.2011478e+05  3.2506706e+05
+ntime =  208
+Field, Kinetic and Total Energies:
+ 4.9570039e+03  3.2010997e+05  3.2506697e+05
+ntime =  209
+Field, Kinetic and Total Energies:
+ 4.9635059e+03  3.2010497e+05  3.2506847e+05
+ntime =  210
+Field, Kinetic and Total Energies:
+ 4.9578506e+03  3.2011056e+05  3.2506841e+05
+ntime =  211
+Field, Kinetic and Total Energies:
+ 4.9364209e+03  3.2013169e+05  3.2506809e+05
+ntime =  212
+Field, Kinetic and Total Energies:
+ 4.8998433e+03  3.2016828e+05  3.2506812e+05
+ntime =  213
+Field, Kinetic and Total Energies:
+ 4.8504937e+03  3.2021869e+05  3.2506919e+05
+ntime =  214
+Field, Kinetic and Total Energies:
+ 4.7888062e+03  3.2028038e+05  3.2506919e+05
+ntime =  215
+Field, Kinetic and Total Energies:
+ 4.7221030e+03  3.2034719e+05  3.2506928e+05
+ntime =  216
+Field, Kinetic and Total Energies:
+ 4.6583677e+03  3.2041006e+05  3.2506844e+05
+ntime =  217
+Field, Kinetic and Total Energies:
+ 4.6067324e+03  3.2046206e+05  3.2506878e+05
+ntime =  218
+Field, Kinetic and Total Energies:
+ 4.5685259e+03  3.2050016e+05  3.2506869e+05
+ntime =  219
+Field, Kinetic and Total Energies:
+ 4.5464438e+03  3.2052288e+05  3.2506931e+05
+ntime =  220
+Field, Kinetic and Total Energies:
+ 4.5394756e+03  3.2052981e+05  3.2506928e+05
+ntime =  221
+Field, Kinetic and Total Energies:
+ 4.5470078e+03  3.2052181e+05  3.2506881e+05
+ntime =  222
+Field, Kinetic and Total Energies:
+ 4.5681914e+03  3.2050081e+05  3.2506900e+05
+ntime =  223
+Field, Kinetic and Total Energies:
+ 4.5999995e+03  3.2047028e+05  3.2507028e+05
+ntime =  224
+Field, Kinetic and Total Energies:
+ 4.6354385e+03  3.2043656e+05  3.2507200e+05
+ntime =  225
+Field, Kinetic and Total Energies:
+ 4.6637358e+03  3.2040862e+05  3.2507238e+05
+ntime =  226
+Field, Kinetic and Total Energies:
+ 4.6771582e+03  3.2039500e+05  3.2507216e+05
+ntime =  227
+Field, Kinetic and Total Energies:
+ 4.6736226e+03  3.2039872e+05  3.2507234e+05
+ntime =  228
+Field, Kinetic and Total Energies:
+ 4.6550000e+03  3.2041503e+05  3.2507003e+05
+ntime =  229
+Field, Kinetic and Total Energies:
+ 4.6340068e+03  3.2043709e+05  3.2507109e+05
+ntime =  230
+Field, Kinetic and Total Energies:
+ 4.6095933e+03  3.2046162e+05  3.2507122e+05
+ntime =  231
+Field, Kinetic and Total Energies:
+ 4.5845234e+03  3.2048666e+05  3.2507119e+05
+ntime =  232
+Field, Kinetic and Total Energies:
+ 4.5637534e+03  3.2050800e+05  3.2507175e+05
+ntime =  233
+Field, Kinetic and Total Energies:
+ 4.5499062e+03  3.2052009e+05  3.2507000e+05
+ntime =  234
+Field, Kinetic and Total Energies:
+ 4.5518774e+03  3.2051784e+05  3.2506972e+05
+ntime =  235
+Field, Kinetic and Total Energies:
+ 4.5714126e+03  3.2049869e+05  3.2507009e+05
+ntime =  236
+Field, Kinetic and Total Energies:
+ 4.6062275e+03  3.2046359e+05  3.2506981e+05
+ntime =  237
+Field, Kinetic and Total Energies:
+ 4.6559639e+03  3.2041578e+05  3.2507175e+05
+ntime =  238
+Field, Kinetic and Total Energies:
+ 4.7125942e+03  3.2035828e+05  3.2507088e+05
+ntime =  239
+Field, Kinetic and Total Energies:
+ 4.7758931e+03  3.2029453e+05  3.2507044e+05
+ntime =  240
+Field, Kinetic and Total Energies:
+ 4.8407168e+03  3.2023091e+05  3.2507162e+05
+ntime =  241
+Field, Kinetic and Total Energies:
+ 4.8946348e+03  3.2017644e+05  3.2507106e+05
+ntime =  242
+Field, Kinetic and Total Energies:
+ 4.9342891e+03  3.2013800e+05  3.2507228e+05
+ntime =  243
+Field, Kinetic and Total Energies:
+ 4.9525254e+03  3.2011706e+05  3.2506959e+05
+ntime =  244
+Field, Kinetic and Total Energies:
+ 4.9598540e+03  3.2011169e+05  3.2507153e+05
+ntime =  245
+Field, Kinetic and Total Energies:
+ 4.9512266e+03  3.2011903e+05  3.2507025e+05
+ntime =  246
+Field, Kinetic and Total Energies:
+ 4.9355347e+03  3.2013438e+05  3.2506991e+05
+ntime =  247
+Field, Kinetic and Total Energies:
+ 4.9171333e+03  3.2015128e+05  3.2506841e+05
+ntime =  248
+Field, Kinetic and Total Energies:
+ 4.9043193e+03  3.2016319e+05  3.2506750e+05
+ntime =  249
+Field, Kinetic and Total Energies:
+ 4.9049561e+03  3.2016422e+05  3.2506919e+05
+ntime =  250
+Field, Kinetic and Total Energies:
+ 4.9176968e+03  3.2014984e+05  3.2506753e+05
+ntime =  251
+Field, Kinetic and Total Energies:
+ 4.9528223e+03  3.2011566e+05  3.2506847e+05
+ntime =  252
+Field, Kinetic and Total Energies:
+ 5.0082959e+03  3.2005897e+05  3.2506725e+05
+ntime =  253
+Field, Kinetic and Total Energies:
+ 5.0863271e+03  3.1998253e+05  3.2506884e+05
+ntime =  254
+Field, Kinetic and Total Energies:
+ 5.1728823e+03  3.1989641e+05  3.2506928e+05
+ntime =  255
+Field, Kinetic and Total Energies:
+ 5.2558057e+03  3.1981325e+05  3.2506906e+05
+ntime =  256
+Field, Kinetic and Total Energies:
+ 5.3277368e+03  3.1974216e+05  3.2506991e+05
+ntime =  257
+Field, Kinetic and Total Energies:
+ 5.3842227e+03  3.1968597e+05  3.2507019e+05
+ntime =  258
+Field, Kinetic and Total Energies:
+ 5.4250317e+03  3.1964506e+05  3.2507009e+05
+ntime =  259
+Field, Kinetic and Total Energies:
+ 5.4474287e+03  3.1962325e+05  3.2507069e+05
+ntime =  260
+Field, Kinetic and Total Energies:
+ 5.4445352e+03  3.1962550e+05  3.2507003e+05
+ntime =  261
+Field, Kinetic and Total Energies:
+ 5.4207075e+03  3.1964991e+05  3.2507062e+05
+ntime =  262
+Field, Kinetic and Total Energies:
+ 5.3826348e+03  3.1968684e+05  3.2506947e+05
+ntime =  263
+Field, Kinetic and Total Energies:
+ 5.3448032e+03  3.1972359e+05  3.2506841e+05
+ntime =  264
+Field, Kinetic and Total Energies:
+ 5.3203110e+03  3.1974753e+05  3.2506784e+05
+ntime =  265
+Field, Kinetic and Total Energies:
+ 5.3166885e+03  3.1975038e+05  3.2506706e+05

@@ -56,6 +56,8 @@
 ! t = scratch array for mfft1rn
       complex, dimension(:), allocatable :: t
       integer :: szt = 0
+! ircfio = error return code from file io
+      integer :: ircfio = 0
       save
 !
       private :: t, szt
@@ -540,7 +542,10 @@
 ! local data
       integer :: j, ios
       read (unit=iunit,iostat=ios) (fc(j),j=1,nx)
-      if (ios /= 0) write (*,*) 'IO error in unit=',iunit
+      if (ios /= 0) then
+         write (*,*) 'IO error in unit=',iunit
+         ircfio = ios
+      endif
       end subroutine
 !
 !-----------------------------------------------------------------------
@@ -552,7 +557,10 @@
 ! local data
       integer :: i, j, ios
       read (unit=iunit,iostat=ios) ((fvc(i,j),i=1,ndim),j=1,nx)
-      if (ios /= 0) write (*,*) 'IO error in unit=',iunit
+      if (ios /= 0) then
+         write (*,*) 'IO error in unit=',iunit
+         ircfio = ios
+      endif
       end subroutine
 !
 !-----------------------------------------------------------------------
@@ -564,7 +572,10 @@
 ! local data
       integer :: j, ios
       read (unit=iunit,iostat=ios) (f(j),j=1,nx)
-      if (ios /= 0) write (*,*) 'IO error in unit=',iunit
+      if (ios /= 0) then
+         write (*,*) 'IO error in unit=',iunit
+         ircfio = ios
+      endif
       end subroutine
 !
 !-----------------------------------------------------------------------
@@ -576,7 +587,10 @@
 ! local data
       integer :: i, j, ios
       read (unit=iunit,iostat=ios) ((fv(i,j),i=1,ndim),j=1,nx)
-      if (ios /= 0) write (*,*) 'IO error in unit=',iunit
+      if (ios /= 0) then
+         write (*,*) 'IO error in unit=',iunit
+         ircfio = ios
+      endif
       end subroutine
 !
 !-----------------------------------------------------------------------
@@ -593,7 +607,10 @@
       integer :: j, k, ios
       read (unit=iunit,iostat=ios) ((fvm(j,k),j=1,ndim),k=1,3),                    &
      &((fv(j,k),j=1,nmvf),k=1,nfvd), ((fe(j,k),j=1,nmvf),k=1,nfed), wk
-      if (ios /= 0) write (*,*) 'IO error in unit=',iunit
+      if (ios /= 0) then
+         write (*,*) 'IO error in unit=',iunit
+         ircfio = ios
+      endif
       end subroutine
 !
 !-----------------------------------------------------------------------
@@ -607,7 +624,10 @@
 ! local data
       integer :: j, k, ios
       read (unit=iunit,iostat=ios) ((partt(j,k),j=1,idimp),k=1,nprobt)
-      if (ios /= 0) write (*,*) 'IO error in unit=',iunit
+      if (ios /= 0) then
+         write (*,*) 'IO error in unit=',iunit
+         ircfio = ios
+      endif
       end subroutine
 !
 !-----------------------------------------------------------------------
@@ -622,7 +642,10 @@
       integer :: i, j, k, ios
       read (unit=iunit,iostat=ios) (((fvs(i,j,k),i=1,nmvf),j=1,ndim),   &
      &k=1,nsxb)
-      if (ios /= 0) write (*,*) 'IO error in unit=',iunit
+      if (ios /= 0) then
+         write (*,*) 'IO error in unit=',iunit
+         ircfio = ios
+      endif
       end subroutine
 !
 !-----------------------------------------------------------------------

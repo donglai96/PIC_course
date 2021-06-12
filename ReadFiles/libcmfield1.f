@@ -830,6 +830,146 @@
       return
       end
 !-----------------------------------------------------------------------
+      subroutine WFFT1CINIT(mixup,sct,indx,nxd,nxhd)
+! this subroutine calculates tables needed by a one dimensional
+! complex to complex fast fourier transform and its inverse.
+! input: indx, indx, nxd, nxhd
+! output: mixup, sct
+! mixup = array of bit reversed addresses
+! sct = sine/cosine table
+! indx = exponent which determines length in x direction,
+! where nx=2**indx
+! nxd >= nx/2, nxd >= nx/2
+! written by viktor k. decyk, ucla
+      implicit none
+      integer mixup, indx, nxd, nxhd
+      complex sct
+      dimension mixup(nxd), sct(nxhd)
+! local data
+      integer nx, nxh, j, k, lb, ll, jb, it
+      real dnx, arg
+      nx = 2**indx
+      nxh = nx/2
+! prepare fft tables
+! bit-reverse index table: mixup(j) = 1 + reversed bits of (j - 1)
+      do 20 j = 1, nx
+      lb = j - 1
+      ll = 0
+      do 10 k = 1, indx
+      jb = lb/2
+      it = lb - 2*jb
+      lb = jb
+      ll = 2*ll + it
+   10 continue
+      mixup(j) = ll + 1
+   20 continue
+! sine/cosine table for the angles 2*n*pi/nx
+      dnx = 6.28318530717959/real(nx)
+      do 30 j = 1, nxh
+      arg = dnx*real(j - 1)
+      sct(j) = cmplx(cos(arg),-sin(arg))
+   30 continue
+      return
+      end
+!-----------------------------------------------------------------------
+      subroutine FFT1C(f,isign,mixup,sct,indx,nxd,nxhd)
+! this subroutine performs a one dimensional complex to complex fast
+! fourier transform and its inverse, using complex arithmetic
+! for isign = 0, input: all except f, output: mixup, sct
+! for isign = (-1,1), input: all, output: f
+! for isign = (-1,1), approximate flop count: 5*nx*log2(nx)
+! indx = power of 2 which determines length of transform, nx = 2**indx
+! if isign = 0, the fft tables are prepared
+! if isign = -1, an inverse fourier transform is performed
+! f(n) = (1/nx)*sum(f(j)*exp(-sqrt(-1)*2pi*n*j/nx))
+! if isign = 1, a forward fourier transform is performed
+! f(j) = sum(f(n)*exp(sqrt(-1)*2pi*n*j/nx))
+! mixup = array of bit reversed addresses
+! sct = sine/cosine table
+! nxd = dimension of f
+! nxhd = nx/2
+! written by viktor k. decyk, ucla
+! scalar version
+      implicit none
+      integer isign, mixup, indx, nxd, nxhd
+      complex f, sct
+      dimension f(nxd), mixup(nxd), sct(nxhd)
+! local data
+      integer nx, nxh, j, k, l, lb, ll, jb, it, j1
+      integer nxs, nxs2, km, k1, k2
+      real dnx, arg, ani
+      complex t
+      nx = 2**indx
+      nxh = nx/2
+      if (isign.ne.0) go to 40
+! prepare fft tables
+! bit-reverse index table: mixup(j) = 1 + reversed bits of (j - 1)
+      do 20 j = 1, nx
+      lb = j - 1
+      ll = 0
+      do 10 k = 1, indx
+      jb = lb/2
+      it = lb - 2*jb
+      lb = jb
+      ll = 2*ll + it
+   10 continue
+      mixup(j) = ll + 1
+   20 continue
+! sine/cosine table for the angles 2*n*pi/nx
+      dnx = 6.28318530717959/real(nx)
+      do 30 j = 1, nxh
+      arg = dnx*real(j - 1)
+      sct(j) = cmplx(cos(arg),-sin(arg))
+   30 continue
+      return
+! bit-reverse array elements
+   40 do 50 j = 1, nx
+      j1 = mixup(j)
+      if (j.ge.j1) go to 50
+      t = f(j1)
+      f(j1) = f(j)
+      f(j) = t
+   50 continue
+      if (isign.gt.0) go to 100
+! inverse fourier transform
+      do 80 l = 1, indx
+      nxs = 2**(l - 1)
+      nxs2 = nxs + nxs
+      km = nxh/nxs
+      do 70 k = 1, km
+      k1 = nxs2*(k - 1)
+      k2 = k1 + nxs
+      do 60 j = 1, nxs
+      t = sct(1+km*(j-1))*f(j+k2)
+      f(j+k2) = f(j+k1) - t
+      f(j+k1) = f(j+k1) + t
+   60 continue
+   70 continue
+   80 continue
+c normalize result
+      ani = 1./real(nx)
+      do 90 j = 1, nx
+      f(j) = f(j)*ani
+   90 continue
+      return
+! forward fourier transform
+  100 do 130 l = 1, indx
+      nxs = 2**(l - 1)
+      nxs2 = nxs + nxs
+      km = nxh/nxs
+      do 120 k = 1, km
+      k1 = nxs2*(k - 1)
+      k2 = k1 + nxs
+      do 110 j = 1, nxs
+      t = conjg(sct(1+km*(j-1)))*f(j+k2)
+      f(j+k2) = f(j+k1) - t
+      f(j+k1) = f(j+k1) + t
+  110 continue
+  120 continue
+  130 continue
+      return
+      end
+!-----------------------------------------------------------------------
       subroutine DIVF1(f,df,nx,ndim,nxvh)
 ! this subroutine calculates the divergence in fourier space
 ! input: all except df, output: df

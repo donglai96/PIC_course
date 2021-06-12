@@ -47,19 +47,21 @@ complex_type = numpy.complex64
 Define function that initializes menus
 """
 def initialize_menus(pc):
-    pc.addGraph("NOPLOT", "No Plot", autoadd=False)
+    pc.addGraph("NOPLOT","No Plot",autoadd=False)
     if in1.ntde > 0:
         pc.addGraph("EDENSITY","Density/Electron Density")  # Enable electron density
     if in1.movion == 1:
         if in1.ntdi > 0:
             if (in1.nddi==1) or (in1.nddi==3):
                pc.addGraph("ION DENSITY","Density/Ion Density")  # Enable ion density
+               pc.addGraph("ION DENSITY MODES","Density/Ion Density")  # Enable ion density(k)
             if (in1.nddi==2) or (in1.nddi==3):
-                pc.addGraph("ION DENSITY +OMEGA VS K","Density/Ion Density +Omega vs K")
-                pc.addGraph("ION DENSITY -OMEGA VS K","Density/Ion Density -Omega vs K",autoadd=False)
+               pc.addGraph("ION DENSITY +OMEGA VS K","Density/Ion Density +Omega vs K")
+               pc.addGraph("ION DENSITY -OMEGA VS K","Density/Ion Density -Omega vs K",autoadd=False)
     if in1.ntp > 0:
         if (in1.ndp==1) or (in1.ndp==3):
             pc.addGraph("POTENTIAL","Potential/Potential")  # Enable potential
+            pc.addGraph("POTENTIAL MODES","Potential/Potential")  # Enable potential(k)
         if in1.ndp == 2 or in1.ndp == 3:
             pc.addGraph("POTENTIAL +OMEGA VS K","Potential/Potential +Omega vs K")
             pc.addGraph("POTENTIAL -OMEGA VS K","Potential/Potential -Omega vs K",autoadd=False)
@@ -70,7 +72,8 @@ def initialize_menus(pc):
     if (in1.movion == 1):
         if (in1.ntji > 0):
             if (in1.ndji == 1) or (in1.ndji == 3):
-                pc.addGraph("ION CURRENT", "Current/Ion Current Density")
+               pc.addGraph("ION CURRENT", "Current/Ion Current Density")
+               pc.addGraph("ION CURRENT MODES","Current/Ion Current Density")
             if (in1.ndji == 2) or (in1.ndji == 3):
                 # display frequency spectrum
                 pc.addGraph("ION CURRENT Y +OMEGA VS K","Current/Ion Current Y: +Omega vs K")
@@ -85,7 +88,7 @@ def initialize_menus(pc):
                         "Vector Potential/Vector Potential Y: +OMEGA vs K")
             pc.addGraph("VECTOR POTENTIAL Y -OMEGA VS K",
                         "Vector Potential/Vector Potential Y: -OMEGA vs K",autoadd=False)
-            pc.addGraph("VECTOR POTENTIAL +Z +OMEGA VS K",
+            pc.addGraph("VECTOR POTENTIAL Z +OMEGA VS K",
                         "Vector Potential/Vector Potential Z: +OMEGA vs K",autoadd=False)
             pc.addGraph("VECTOR POTENTIAL Z -OMEGA VS K",
                         "Vector Potential/Vector Potential Z: -OMEGA vs K",autoadd=False)
@@ -103,6 +106,7 @@ def initialize_menus(pc):
                         "Transverse Electric Field/Transverse Electric Field Z: -Omega vs K",autoadd=False)
     if (in1.ntb > 0):
         pc.addGraph("BFIELD","Magnetic Field")  # Enable magnetic field
+        pc.addGraph("BFIELD MODES","Magnetic Field")  # Enable magnetic field(k)
     if (in1.ntar > 0):
         if (in1.ndar == 1) or (in1.ndar == 3):
             pc.addGraph("RADIATIVE VPOTENTIAL","Vector Potential/Radiative Vector Potential")
@@ -133,30 +137,30 @@ def initialize_menus(pc):
     if in1.ntt > 0:
         if (in1.nst==3):
             if (in1.ndt==1):
-                pc.addGraph("TRAJECTORY", "Electron Distribution")  # Enable electron trajectory
+                pc.addGraph("TRAJECTORY","Electron Distribution")  # Enable electron trajectory
             elif (in1.ndt==2):
-                pc.addGraph("TRAJECTORY", "Ion Distribution")  # Enable ion trajectory
+                pc.addGraph("TRAJECTORY","Ion Distribution")  # Enable ion trajectory
     if in1.nts > 0:
-        labels = ["Vx-x Phase Plot", "Vy-x Phase Plot", "Vz-x Phase Plot"]
+        labels = ["Vx-x Phase Plot","Vy-x Phase Plot","Vz-x Phase Plot"]
         nn = in1.nsxv
         for i in range(0, 3):
             if ((nn % 2) == 1):
                 if (in1.nds==1) or (in1.nds==3):
-                   pc.addGraph("EPHASE" + str(i), "Electron/" + labels[i])  # Enable electron velocity
+                   pc.addGraph("EPHASE" + str(i),"Electron/"+labels[i])  # Enable electron velocity
                 if (in1.movion == 1):  # Ions
                     if ((in1.nds == 2) or (in1.nds == 3)):
-                        pc.addGraph("IPHASE" + str(i), "Ions/" + labels[i])  # Enable electron velocity
+                        pc.addGraph("IPHASE"+str(i),"Ions/"+labels[i])  # Enable electron velocity
             nn = int(nn / 2)
         # vx-vy, vx-vz or vy-vz
-        labels = ["Vx-Vy Phase Plot", "Vx-Vz Phase Plot", "Vy-Vz Phase Plot"]
+        labels = ["Vx-Vy Phase Plot","Vx-Vz Phase Plot","Vy-Vz Phase Plot"]
         nn = in1.nsvv
         for i in range(0, 3):
             if ((nn % 2) == 1):
                 if (in1.nds==1) or (in1.nds==3):
-                    pc.addGraph("EPHASEV" + str(i), "Electron/" + labels[i])  # Enable electron velocity
+                    pc.addGraph("EPHASEV"+str(i),"Electron/"+labels[i])  # Enable electron velocity
                 if (in1.movion == 1):  # Ions
                     if ((in1.nds == 2) or (in1.nds == 3)):
-                        pc.addGraph("IPHASEV" + str(i), "Ions/" + labels[i])  # Enable electron velocity
+                        pc.addGraph("IPHASEV"+str(i),"Ions/"+labels[i])  # Enable electron velocity
             nn = int(nn / 2)
     if (in1.ntw > 0):
         pc.addGraph("ENERGY","Energy",priority=150)  # Enable energy
@@ -288,7 +292,7 @@ def main(*args):
       sb1.nloop = nloop
 
 # initialize all diagnostics from namelist input parameters
-# wt = energy time history array=
+# wt = energy time history array
 # pkw = power spectrum for potential
 # pkwdi = power spectrum for ion density
 # wk = maximum frequency as a function of k for potential
@@ -390,8 +394,8 @@ def main(*args):
          if (ntime==in1.ntje*it):
             sb1.ecurrent_diag13(sb1.vfield)
 # display smoothed electron current
-            graf2.dvector1(sb1.vfield,'ELECTRON CURRENT',ntime,999,0,2,
-                            nx,irc,early=in1.ntji)
+            graf2.dvector1(sb1.vfield,'ELECTRON CURRENT',time,999,0,2,
+                            nx,irc,early=in1.ntje)
             if (irc[0]==1): break
             irc[0] = 0
 
@@ -411,9 +415,15 @@ def main(*args):
             if (ntime==in1.ntji*it):
                sb1.icurrent_diag13(sb1.vfield,sb1.vpkwji,sb1.vwkji,ntime)
                if ((in1.ndji==1) or (in1.ndji==3)):
-# display smoothed ion current
-                  graf2.dvector1(sb1.vfield,'ION CURRENT',ntime,999,0,2,
+# display smoothed ion current in real space
+                  graf2.dvector1(sb1.vfield,'ION CURRENT',time,999,0,2,
                                  nx,irc,early=in1.ntji)
+                  if (irc[0]==1): break
+                  irc[0] = 0
+# display ion current in fourier space
+                  sb1.vfield[:,:in1.modesxb] = numpy.abs(sb1.curit)
+                  graf2.dvector1(sb1.vfield,'ION CURRENT MODES',time,999,0,2,in1.modesxb,
+                                 irc,early=in1.ntp)
                   if (irc[0]==1): break
                   irc[0] = 0
 # ion spectral analysis
@@ -477,9 +487,15 @@ def main(*args):
             if (ntime==in1.ntdi*it):
                s1.idensity_diag1(s1.sfield,s1.pkwdi,s1.wkdi,ntime)
                if ((in1.nddi==1) or (in1.nddi==3)):
-# display smoothed ion density
+# display smoothed ion density in real space
                   graf2.dscaler1(s1.sfield,'ION DENSITY',time,999,1,nx,irc,
                                  title='Ion Density vs X',early=in1.ntdi)
+                  if (irc[0]==1): break
+                  irc[0] = 0
+# display smoothed ion density in fourier space
+                  s1.sfield[:in1.modesxdi] = numpy.abs(s1.denit)
+                  graf2.dscaler1(s1.sfield,'ION DENSITY MODES',time,999,1,in1.modesxdi,
+                                 irc,title='Ion Density vs Mode Number',early=in1.ntdi)
                   if (irc[0]==1): break
                   irc[0] = 0
 # ion spectral analysis
@@ -588,7 +604,7 @@ def main(*args):
          mfield1.mbaddext1(sb1.byze,sb1.tfield,in1.omy,in1.omz,nx)
 
 # add external traveling wave field
-      ts = in1.dt*float(ntime)
+      ts = abs(in1.dt)*float(ntime)
       mfield1.meaddext13(sb1.fxyze,sb1.tfield,in1.amodex,in1.freq,ts,
                          in1.trmp,in1.toff,in1.el0,in1.er0,in1.ey0,in1.ez0,
                          nx)
@@ -603,9 +619,15 @@ def main(*args):
          if (ntime==in1.ntp*it):
             s1.potential_diag1(s1.sfield,s1.pkw,s1.wk,ntime)
             if ((in1.ndp==1) or (in1.ndp==3)):
-# display potential
+# display potential in real space
                graf2.dscaler1(s1.sfield,'POTENTIAL',time,999,0,nx,irc,
                               title='Potential vs X',early=in1.ntp)
+               if (irc[0]==1): break
+               irc[0] = 0
+# display potential in fourier space
+               s1.sfield[:in1.modesxp] = numpy.abs(s1.pott)
+               graf2.dscaler1(s1.sfield,'POTENTIAL MODES',time,999,0,in1.modesxp,
+                              irc,title='Potential vs Mode Number',early=in1.ntp)
                if (irc[0]==1): break
                irc[0] = 0
 # spectral analysis
@@ -642,7 +664,7 @@ def main(*args):
             sb1.vpotential_diag13(sb1.vfield,sb1.vpkw,sb1.vwk,ntime)
             if ((in1.nda==1) or (in1.nda==3)):
 # display vector potential
-               graf2.dvector1(sb1.vfield,'VECTOR POTENTIAL',ntime,999,0,2,
+               graf2.dvector1(sb1.vfield,'VECTOR POTENTIAL',time,999,0,2,
                               nx,irc,early=in1.nta)
                if (irc[0]==1): break
                irc[0] = 0
@@ -651,11 +673,11 @@ def main(*args):
 # display frequency spectrum
                pc.showSimpleImage("VECTOR POTENTIAL Y +OMEGA VS K",sb1.vpkw[0,:,:,0],
                                   "Time=" + str(time),extent=(0,in1.modesxa,in1.wrmin,
-                                  in1.wrmin,in1.wrmax),early=in1.nta,ticks_scale=spectrum_scale)
+                                  in1.wrmax),early=in1.nta,ticks_scale=spectrum_scale)
                pc.showSimpleImage("VECTOR POTENTIAL Y -OMEGA VS K",sb1.vpkw[0,:,:,1],
                                   "Time=" + str(time),extent=(0,in1.modesxa,in1.wrmin,
                                   in1.wrmax),early=in1.nta,ticks_scale=spectrum_scale)
-               pc.showSimpleImage("VECTOR POTENTIAL +Z +OMEGA VS K",sb1.vpkw[1,:,:,0],
+               pc.showSimpleImage("VECTOR POTENTIAL Z +OMEGA VS K",sb1.vpkw[1,:,:,0],
                                   "Time=" + str(time),extent=(0,in1.modesxa,in1.wrmin,
                                   in1.wrmax),early=in1.nta,ticks_scale=spectrum_scale)
                pc.showSimpleImage("VECTOR POTENTIAL Z -OMEGA VS K",sb1.vpkw[1,:,:,1],
@@ -675,7 +697,7 @@ def main(*args):
             if ((in1.ndet==1) or (in1.ndet==3)):
 # display transverse efield
                graf2.dvector1(sb1.vfield,'TRANSVERSE EFIELD',time,999,0,
-                             2,nx,irc,early=in1.ntet)
+                              2,nx,irc,early=in1.ntet)
                if (irc[0]==1): break
                irc[0] = 0
 # spectral analysis
@@ -703,9 +725,15 @@ def main(*args):
          it = int(ntime/in1.ntb)
          if (ntime==in1.ntb*it):
             sb1.bfield_diag13(sb1.vfield)
-# display magnetic field
-            graf2.dvector1(sb1.vfield,'BFIELD',ntime,999,0,2,nx,
-                           irc, early=in1.ntb)
+# display magnetic field in real space
+            graf2.dvector1(sb1.vfield,'BFIELD',time,999,0,2,nx,irc,
+                           early=in1.ntb)
+            if (irc[0]==1): break
+            irc[0] = 0
+# display magnetic field in fourier space
+            sb1.vfield[:,:in1.modesxb] = numpy.abs(sb1.bt)
+            graf2.dvector1(sb1.vfield,'BFIELD MODES',time,999,0,2,in1.modesxb,
+                           irc,early=in1.ntp)
             if (irc[0]==1): break
             irc[0] = 0
 
@@ -883,7 +911,7 @@ def main(*args):
          it = int(ntime/in1.ntw)
          if (ntime==in1.ntw*it):
             sb1.energy_diag13(s1.wt,ntime,iuot)
-            pc.showEnergy(in1.ntw*numpy.array(range(it+1))*in1.dt,s1.wt,ntime,
+            pc.showEnergy(in1.ntw*numpy.array(range(it+1))*abs(in1.dt),s1.wt,ntime,
                           ["Total Field","Kinetic","Kinetic Ions","Total Energy","Electric(l)","Electric(t)",
                            "Magnetic"],early=in1.ntw)
 
@@ -924,8 +952,8 @@ def main(*args):
          if (in1.nplot > 0):
             irc[0] = graf1.open_graphs(1)
          ts = in1.t0
-         graf1.displaytr1(s1.partd,ts,in1.dt*float(in1.ntt),s1.itt,2,999,
-                          irc)
+         graf1.displaytr1(s1.partd,ts,abs(in1.dt)*float(in1.ntt),s1.itt,
+                          2,999,irc)
          if (irc[0]==1):
             exit(0)
          graf1.reset_nplot(in1.nplot,irc)
@@ -934,7 +962,7 @@ def main(*args):
    if (in1.ntw > 0):
       ts = in1.t0
 # display energy histories
-      graf1.displayw1(s1.wt,ts,in1.dt*float(in1.ntw),s1.itw,irc)
+      graf1.displayw1(s1.wt,ts,abs(in1.dt)*float(in1.ntw),s1.itw,irc)
       if (irc[0]==1):
          exit(0)
 # print energy summaries
@@ -945,15 +973,15 @@ def main(*args):
       ts = in1.t0
 # display electron distribution time histories and entropy
       if ((in1.ndv==1) or (in1.ndv==3)):
-         graf1.displayfvt1(s1.fvtm,' ELECTRON',ts,in1.dt*float(in1.ntv),
-                           s1.itv,irc)
+         graf1.displayfvt1(s1.fvtm,' ELECTRON',ts,
+                           abs(in1.dt)*float(in1.ntv),s1.itv,irc)
          if (irc[0]==1):
             exit(0)
 # display ion distribution time histories and entropy
       if (in1.movion==1):
          if ((in1.ndv==2) or (in1.ndv==3)):
-            graf1.displayfvt1(s1.fvtmi,' ION',ts,in1.dt*float(in1.ntv),
-                              s1.itv,irc)
+            graf1.displayfvt1(s1.fvtmi,' ION',ts,
+                              abs(in1.dt)*float(in1.ntv),s1.itv,irc)
             if (irc[0]==1):
                exit(0)
 
@@ -1022,7 +1050,9 @@ def main(*args):
    iuot.close()
 # close graphics device
    graf1.close_graphs()
+# this will pause the code if control panel is in step mode
+   pc._sendplot("RUNCONTROL")
+   pc._sendplot("EXIT")
 
 if (__name__=="__main__"):
     PlasmaContext.runMain(main)
-

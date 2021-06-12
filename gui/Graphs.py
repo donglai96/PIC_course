@@ -1116,16 +1116,16 @@ class DrawSimpleImage(KeyList):
         # test for dispersion
 
         
-        kplot = np.arange(0,self.img.shape[0],0.01)  # 41 in the input
-        indx = 9
-        nx = 2**indx
-        k_real = kplot*2*np.pi/nx
+        #kplot = np.arange(0,self.img.shape[0],0.01)  # 41 in the input
+        #indx = 9
+        #nx = 2**indx
+        #k_real = kplot*2*np.pi/nx
         # k = 2pi M/(nx * delta-x)
-        vtx = 1 
+        #vtx = 1 
         # vth = vtx * delta-x * wpe
         #ci = 0.1    delta-x *wpe/c = 0.1
-        ww_ww_pe = np.sqrt(1 + 3*k_real**2 * vtx**2)
-        plasma_dis  = axes.plot(kplot,ww_ww_pe,color ='black')
+        #ww_ww_pe = np.sqrt(1 + 3*k_real**2 * vtx**2)
+        #plasma_dis  = axes.plot(kplot,ww_ww_pe,color ='black')
 
 
         # end test for dispersion
